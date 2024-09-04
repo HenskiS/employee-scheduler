@@ -7,30 +7,30 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 const localizer = momentLocalizer(moment);
 
 const MyCalendar = () => {
-  const [employees, setEmployees] = useState([]);
+  const [technicians, settechnicians] = useState([]);
   const [events, setEvents] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const fetchEmployees = async () => {
+  const fetchtechnicians = async () => {
     try {
-      const response = await axios.get('/api/employees');
-      setEmployees(response.data);
+      const response = await axios.get('/api/technicians');
+      settechnicians(response.data);
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      console.error('Error fetching technicians:', error);
     }
   };
 
   const fetchSchedules = async () => {
     try {
-      const response = await axios.get(`/api/schedules/range/${selectedDate.toISOString()}/${selectedDate.toISOString()}`);
+      const response = await axios.get(`/api/events/range/${selectedDate.toISOString()}/${selectedDate.toISOString()}`);
       const formattedEvents = response.data.map(schedule => ({
         id: schedule.id,
         title: schedule.title,
         start: new Date(`${selectedDate.toDateString()} ${schedule.time}`),
         end: new Date(`${selectedDate.toDateString()} ${moment(schedule.time, 'HH:mm').add(1, 'hour').format('HH:mm')}`),
-        resourceId: schedule.employeeId,
+        resourceId: schedule.technicianId,
       }));
       setEvents(formattedEvents);
     } catch (error) {
@@ -39,9 +39,13 @@ const MyCalendar = () => {
   };
 
   useEffect(() => {
-    fetchEmployees();
+    fetchtechnicians();
     fetchSchedules();
   }, [selectedDate]);
+
+  const findtechnicianById = (technicianId) => {
+    return technicians.find(technician => technician.technician_id === technicianId) || null;
+  };
 
   const handleSelectEvent = (event) => {
     setSelectedEvent(event);
@@ -69,7 +73,7 @@ const MyCalendar = () => {
       const eventData = {
         title: event.title,
         time: moment(event.start).format('HH:mm'),
-        employeeId: event.resourceId,
+        technicianId: event.resourceId,
       };
 
       if (event.id) {
@@ -84,10 +88,11 @@ const MyCalendar = () => {
     }
   };
 
+
   return (
     <div>
         {isDialogOpen && (
-            <h3>{employees[selectedEvent.resourceId-1].name+', '+moment(selectedEvent.start).format('h:mma')+'-'+moment(selectedEvent.end).format('h:mma')}</h3>
+            <h3>{findtechnicianById(selectedEvent.resourceId).username+', '+moment(selectedEvent.start).format('h:mma')+'-'+moment(selectedEvent.end).format('h:mma')}</h3>
             /*<EventDialog
                 event={selectedEvent}
                 onClose={handleCloseDialog} 
@@ -103,12 +108,12 @@ const MyCalendar = () => {
             views={['day']}
             step={60}
             timeslots={1}
-            min={new Date(2023, 0, 1, 8, 0, 0)}
+            min={new Date(2023, 0, 1, 6, 0, 0)}
             max={new Date(2023, 0, 1, 21, 0, 0)}
             date={selectedDate}
             onNavigate={(date) => setSelectedDate(date)}
-            resources={employees.map(employee => ({ id: employee.id, title: employee.name }))}
-            resourceIdAccessor="id"
+            resources={technicians.map(technician => ({ id: technician.technician_id, title: technician.name }))}
+            //resourceIdAccessor="id"
             resourceTitleAccessor="title"
             onSelectEvent={handleSelectEvent}
             onSelectSlot={handleSelectSlot}

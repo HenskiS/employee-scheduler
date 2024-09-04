@@ -1,52 +1,134 @@
 const sqlite3 = require('sqlite3').verbose();
 
-const db = new sqlite3.Database('./employee_scheduler.db', (err) => {
+const db = new sqlite3.Database('./technician_scheduler.db', (err) => {
   if (err) {
     console.error('Error opening database', err);
-  } else {
-    console.log('Connected to the SQLite database.');
-    db.run(`CREATE TABLE IF NOT EXISTS employees (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      role TEXT NOT NULL
-    )`);
-    
-    db.run(`CREATE TABLE IF NOT EXISTS schedules (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      employee_id INTEGER,
-      client_id INTEGER,
-      start_time TEXT NOT NULL,
-      end_time TEXT NOT NULL,
-      name TEXT NOT NULL,
-      details TEXT,
-      FOREIGN KEY (employee_id) REFERENCES employees (id)
-    )`);
+    return;
+  }
+  console.log('Connected to the SQLite database.');
+  
+  // Wrap all operations in a transaction
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
 
-    // Insert sample employees
-    const sampleEmployees = [
-      { name: 'John Doe', role: 'Manager' },
-      { name: 'Jane Smith', role: 'Developer' },
-      { name: 'Mike Johnson', role: 'Designer' }
+    const tables = [
+      `CREATE TABLE IF NOT EXISTS clients (
+        client_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT,
+        phone TEXT
+      )`,
+      `CREATE TABLE IF NOT EXISTS technicians (
+        technician_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        username TEXT,
+        password TEXT,
+        email TEXT,
+        phone TEXT
+      )`,
+      `CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS events (
+        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        is_all_day INTEGER NOT NULL DEFAULT 0,
+        client_id INTEGER,
+        technician_id INTEGER,
+        event_name TEXT,
+        label TEXT CHECK(label IN ('Available', 'Unavailable', 'TOR')),
+        created_by INTEGER NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_by INTEGER,
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (client_id) REFERENCES clients(client_id),
+        FOREIGN KEY (technician_id) REFERENCES technicians(technician_id),
+        FOREIGN KEY (created_by) REFERENCES users(user_id),
+        FOREIGN KEY (updated_by) REFERENCES users(user_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS event_history (
+        history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        is_all_day INTEGER NOT NULL,
+        client_id INTEGER,
+        technician_id INTEGER,
+        event_name TEXT,
+        label TEXT CHECK(label IN ('Available', 'Unavailable', 'TOR')),
+        changed_by INTEGER NOT NULL,
+        changed_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (event_id) REFERENCES events(event_id),
+        FOREIGN KEY (client_id) REFERENCES clients(client_id),
+        FOREIGN KEY (technician_id) REFERENCES technicians(technician_id),
+        FOREIGN KEY (changed_by) REFERENCES users(user_id)
+      )`
     ];
 
-    /*sampleEmployees.forEach(employee => {
-      db.run('INSERT INTO employees (name, role) VALUES (?, ?)', [employee.name, employee.role], function(err) {
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_event_start_time ON events(start_time)',
+      'CREATE INDEX IF NOT EXISTS idx_event_end_time ON events(end_time)',
+      'CREATE INDEX IF NOT EXISTS idx_event_label ON events(label)',
+      'CREATE INDEX IF NOT EXISTS idx_event_history_event_id ON event_history(event_id)',
+      'CREATE INDEX IF NOT EXISTS idx_event_history_changed_at ON event_history(changed_at)'
+    ];
+
+    // Create tables
+    tables.forEach((table, index) => {
+      db.run(table, (err) => {
         if (err) {
-          console.error('Error inserting employee:', err);
+          console.error(`Error creating table ${index + 1}:`, err);
+          db.run('ROLLBACK');
         } else {
-          console.log(`Inserted employee with ID: ${this.lastID}`);
+          console.log(`Table ${index + 1} created successfully`);
         }
       });
-    });*/
-  }
+    });
+
+    // Create indexes
+    indexes.forEach((index, i) => {
+      db.run(index, (err) => {
+        if (err) {
+          console.error(`Error creating index ${i + 1}:`, err);
+          db.run('ROLLBACK');
+        } else {
+          console.log(`Index ${i + 1} created successfully`);
+        }
+      });
+    });
+
+    db.run('COMMIT', (err) => {
+      if (err) {
+        console.error('Error committing transaction:', err);
+        db.run('ROLLBACK');
+      } else {
+        console.log('All tables and indexes created successfully');
+      }
+    });
+  });
+  /*const sampletechnicians = [
+    { name: 'John Doe', username: 'JDoe' },
+    { name: 'Jane Smith', username: 'JSmith' },
+    { name: 'Mike Johnson', username: 'MJohnson' }
+  ];
+
+  sampletechnicians.forEach(technician => {
+    db.run('INSERT INTO technicians (name, username) VALUES (?, ?)', [technician.name, technician.username], function(err) {
+      if (err) {
+        console.error('Error inserting technician:', err);
+      } else {
+        console.log(`Inserted technician with ID: ${this.lastID}`);
+      }
+    });
+  });*/
 });
 
 module.exports = db;
-
-// To insert sample employees, we've added a new section within the database connection callback.
-// We define an array of sample employees, each with a name and role.
-// Then, we use forEach to iterate over this array and insert each employee into the database.
-// The INSERT statement is executed using db.run(), with placeholders (?) for the values to prevent SQL injection.
-// If successful, it logs the ID of the inserted employee. If there's an error, it logs the error message.
-// This code will run every time the database connection is established, so you might want to add a check
-// to prevent duplicate insertions in a production environment.

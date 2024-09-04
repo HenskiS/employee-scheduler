@@ -1,4 +1,4 @@
-/*import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -25,10 +25,10 @@ function EventDialog({ open, onClose, event, onSave }) {
     if (event) {
       setFormData(event);
     }
-    loadEmployeesAndClients();
+    //loadEmployeesAndClients();
   }, [event]);
 
-  const loadEmployeesAndClients = async () => {
+  /*const loadEmployeesAndClients = async () => {
     try {
       const [fetchedEmployees, fetchedClients] = await Promise.all([
         fetchEmployees(),
@@ -39,7 +39,7 @@ function EventDialog({ open, onClose, event, onSave }) {
     } catch (error) {
       console.error('Error loading employees and clients:', error);
     }
-  };
+  };*/
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -53,7 +53,10 @@ function EventDialog({ open, onClose, event, onSave }) {
 
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{event?.id ? 'Edit Event' : 'Add Event'}</DialogTitle>
+        <DialogTitle>{event ? 'Edit Event' : 'Add Event'}</DialogTitle>
+    </Dialog>
+    /*<Dialog open={open} onClose={onClose}>
+      <DialogTitle>{event ? 'Edit Event' : 'Add Event'}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
           <TextField
@@ -132,8 +135,8 @@ function EventDialog({ open, onClose, event, onSave }) {
           </Button>
         </DialogActions>
       </form>
-    </Dialog>
+    </Dialog>*/
   );
 }
 
-export default EventDialog;*/
+export default EventDialog;

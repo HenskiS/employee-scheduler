@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 
-// Get all schedules
+// Get all events
 router.get('/', (req, res) => {
-  db.all('SELECT * FROM schedules', (err, rows) => {
+  db.all('SELECT * FROM events', (err, rows) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -13,27 +13,27 @@ router.get('/', (req, res) => {
   });
 });
 
-// Get a single schedule
+// Get a single event
 router.get('/:id', (req, res) => {
   const { id } = req.params;
-  db.get('SELECT * FROM schedules WHERE id = ?', [id], (err, row) => {
+  db.get('SELECT * FROM events WHERE id = ?', [id], (err, row) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
     if (!row) {
-      res.status(404).json({ error: 'Schedule not found' });
+      res.status(404).json({ error: 'event not found' });
       return;
     }
     res.json(row);
   });
 });
 
-// Create a new schedule
+// Create a new event
 router.post('/', (req, res) => {
   const { employee_id, client_id, start_time, end_time, name, details } = req.body;
   db.run(
-    'INSERT INTO schedules (employee_id, client_id, start_time, end_time, name, details) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO events (employee_id, client_id, start_time, end_time, name, details) VALUES (?, ?, ?, ?, ?, ?)',
     [employee_id, client_id, start_time, end_time, name, details],
     function(err) {
       if (err) {
@@ -45,12 +45,12 @@ router.post('/', (req, res) => {
   );
 });
 
-// Update a schedule
+// Update a event
 router.put('/:id', (req, res) => {
   const { id } = req.params;
   const { employee_id, client_id, start_time, end_time, name, details } = req.body;
   db.run(
-    'UPDATE schedules SET employee_id = ?, client_id = ?, start_time = ?, end_time = ?, name = ?, details = ? WHERE id = ?',
+    'UPDATE events SET employee_id = ?, client_id = ?, start_time = ?, end_time = ?, name = ?, details = ? WHERE id = ?',
     [employee_id, client_id, start_time, end_time, name, details, id],
     function(err) {
       if (err) {
@@ -58,7 +58,7 @@ router.put('/:id', (req, res) => {
         return;
       }
       if (this.changes === 0) {
-        res.status(404).json({ error: 'Schedule not found' });
+        res.status(404).json({ error: 'event not found' });
         return;
       }
       res.json({ id, employee_id, client_id, start_time, end_time, name, details });
@@ -66,26 +66,26 @@ router.put('/:id', (req, res) => {
   );
 });
 
-// Delete a schedule
+// Delete a event
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
-  db.run('DELETE FROM schedules WHERE id = ?', [id], function(err) {
+  db.run('DELETE FROM events WHERE id = ?', [id], function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
     if (this.changes === 0) {
-      res.status(404).json({ error: 'Schedule not found' });
+      res.status(404).json({ error: 'event not found' });
       return;
     }
-    res.json({ message: 'Schedule deleted successfully' });
+    res.json({ message: 'event deleted successfully' });
   });
 });
 
-// Get schedules for a specific employee
+// Get events for a specific employee
 router.get('/employee/:employeeId', (req, res) => {
   const { employeeId } = req.params;
-  db.all('SELECT * FROM schedules WHERE employee_id = ?', [employeeId], (err, rows) => {
+  db.all('SELECT * FROM events WHERE employee_id = ?', [employeeId], (err, rows) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -94,10 +94,10 @@ router.get('/employee/:employeeId', (req, res) => {
   });
 });
 
-// Get schedules for a specific client
+// Get events for a specific client
 router.get('/client/:clientId', (req, res) => {
   const { clientId } = req.params;
-  db.all('SELECT * FROM schedules WHERE client_id = ?', [clientId], (err, rows) => {
+  db.all('SELECT * FROM events WHERE client_id = ?', [clientId], (err, rows) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -106,11 +106,11 @@ router.get('/client/:clientId', (req, res) => {
   });
 });
 
-// Get schedules for a specific date range
+// Get events for a specific date range
 router.get('/range/:startDate/:endDate', (req, res) => {
   const { startDate, endDate } = req.params;
   db.all(
-    'SELECT * FROM schedules WHERE start_time >= ? AND end_time <= ?',
+    'SELECT * FROM events WHERE start_time >= ? AND end_time <= ?',
     [startDate, endDate],
     (err, rows) => {
       if (err) {
