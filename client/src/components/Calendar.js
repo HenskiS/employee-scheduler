@@ -3,44 +3,48 @@ import axios from '../api/axios';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import EventDialog from './EventDialog';
+import { useScheduling } from './SchedulingContext';
 
 const localizer = momentLocalizer(moment);
 
 const MyCalendar = () => {
-  const [technicians, settechnicians] = useState([]);
+  const { technicians } = useScheduling()
+  //const [technicians, settechnicians] = useState([]);
   const [events, setEvents] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [newEvent, setNewEvent] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const fetchtechnicians = async () => {
+  /*const fetchtechnicians = async () => {
     try {
       const response = await axios.get('/api/technicians');
       settechnicians(response.data);
     } catch (error) {
       console.error('Error fetching technicians:', error);
     }
-  };
+  };*/
 
-  const fetchSchedules = async () => {
+  const fetchEvents = async () => {
     try {
       const response = await axios.get(`/api/events/range/${selectedDate.toISOString()}/${selectedDate.toISOString()}`);
-      const formattedEvents = response.data.map(schedule => ({
-        id: schedule.id,
-        title: schedule.title,
-        start: new Date(`${selectedDate.toDateString()} ${schedule.time}`),
-        end: new Date(`${selectedDate.toDateString()} ${moment(schedule.time, 'HH:mm').add(1, 'hour').format('HH:mm')}`),
-        resourceId: schedule.technicianId,
+      const formattedEvents = response.data.map(event => ({
+        id: event.id,
+        title: event.title,
+        start: new Date(`${selectedDate.toDateString()} ${event.time}`),
+        end: new Date(`${selectedDate.toDateString()} ${moment(event.time, 'HH:mm').add(1, 'hour').format('HH:mm')}`),
+        resourceId: event.technicianId,
       }));
       setEvents(formattedEvents);
     } catch (error) {
-      console.error('Error fetching schedules:', error);
+      console.error('Error fetching events:', error);
     }
   };
 
   useEffect(() => {
-    fetchtechnicians();
-    fetchSchedules();
+    //fetchtechnicians();
+    fetchEvents();
   }, [selectedDate]);
 
   const findtechnicianById = (technicianId) => {
@@ -49,6 +53,7 @@ const MyCalendar = () => {
 
   const handleSelectEvent = (event) => {
     setSelectedEvent(event);
+    setNewEvent(null)
     setIsDialogOpen(true);
   };
 
@@ -57,9 +62,10 @@ const MyCalendar = () => {
     const newEvent = {
       start,
       end,
-      resourceId,
+      technician: findtechnicianById(resourceId),
     };
-    setSelectedEvent(newEvent);
+    setSelectedEvent(null);
+    setNewEvent(newEvent);
     setIsDialogOpen(true);
   };
 
@@ -81,7 +87,7 @@ const MyCalendar = () => {
       } else {
         await axios.post('/api/schedules', eventData);
       }
-      fetchSchedules();
+      fetchEvents();
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving event:', error);
@@ -92,12 +98,13 @@ const MyCalendar = () => {
   return (
     <div>
         {isDialogOpen && (
-            <h3>{findtechnicianById(selectedEvent.resourceId).username+', '+moment(selectedEvent.start).format('h:mma')+'-'+moment(selectedEvent.end).format('h:mma')}</h3>
-            /*<EventDialog
+            <EventDialog
+                open={isDialogOpen}
                 event={selectedEvent}
+                newEvent={newEvent}
                 onClose={handleCloseDialog} 
                 onSave={handleSaveEvent}
-            />*/
+            />
         )}
         <Calendar
             localizer={localizer}

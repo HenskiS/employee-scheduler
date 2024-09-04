@@ -8,17 +8,27 @@ import {
   Button,
   MenuItem,
 } from '@mui/material';
+import moment from 'moment';
+import { useScheduling } from './SchedulingContext';
 
-function EventDialog({ open, onClose, event, onSave }) {
+function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const [formData, setFormData] = useState({
-    employee_id: '',
+    event_id: '',
     client_id: '',
-    start_time: '',
-    end_time: '',
-    name: '',
-    details: '',
+    start_time: newEvent?.start ?? '',
+    end_time: newEvent?.end ?? '',
+    event_name: '',
+    description: '',
+    is_all_day: false,
+    technician_name: newEvent?.technician?.name ?? '',
+    label: '', // TEXT CHECK(label IN ('Available', 'Unavailable', 'TOR')),
+    created_by: null,
+    created_at: null, // TEXT DEFAULT (datetime('now')),
+    updated_by: null, // INTEGER,
+    updated_at: null // TEXT DEFAULT (datetime('now')),
   });
   const [employees, setEmployees] = useState([]);
+  const { technicians } = useScheduling();
   const [clients, setClients] = useState([]);
 
   useEffect(() => {
@@ -53,9 +63,6 @@ function EventDialog({ open, onClose, event, onSave }) {
 
   return (
     <Dialog open={open} onClose={onClose}>
-        <DialogTitle>{event ? 'Edit Event' : 'Add Event'}</DialogTitle>
-    </Dialog>
-    /*<Dialog open={open} onClose={onClose}>
       <DialogTitle>{event ? 'Edit Event' : 'Add Event'}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
@@ -68,7 +75,7 @@ function EventDialog({ open, onClose, event, onSave }) {
             value={formData.employee_id}
             onChange={handleInputChange}
           >
-            {employees.map((employee) => (
+            {technicians.map((employee) => (
               <MenuItem key={employee.id} value={employee.id}>
                 {employee.name}
               </MenuItem>
@@ -94,8 +101,8 @@ function EventDialog({ open, onClose, event, onSave }) {
             margin="normal"
             name="start_time"
             label="Start Time"
-            type="datetime-local"
-            value={formData.start_time}
+            type="time"
+            value={moment(formData.start_time).format('HH:mm')}
             onChange={handleInputChange}
             InputLabelProps={{ shrink: true }}
           />
@@ -104,8 +111,8 @@ function EventDialog({ open, onClose, event, onSave }) {
             margin="normal"
             name="end_time"
             label="End Time"
-            type="datetime-local"
-            value={formData.end_time}
+            type="time"
+            value={moment(formData.end_time).format('HH:mm')}
             onChange={handleInputChange}
             InputLabelProps={{ shrink: true }}
           />
@@ -135,7 +142,7 @@ function EventDialog({ open, onClose, event, onSave }) {
           </Button>
         </DialogActions>
       </form>
-    </Dialog>*/
+    </Dialog>
   );
 }
 
