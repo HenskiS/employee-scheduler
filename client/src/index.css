@@ -88,3 +88,9 @@ td:hover {
 .column-resizer:hover {
   background-color: #999;
 }
+
+.cal-container {
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+};

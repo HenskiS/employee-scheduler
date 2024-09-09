@@ -113,10 +113,13 @@ const db = new sqlite3.Database('./technician_scheduler.db', (err) => {
       }
     });
   });
-  /*const sampletechnicians = [
+  const sampletechnicians = [
     { name: 'John Doe', username: 'JDoe' },
     { name: 'Jane Smith', username: 'JSmith' },
-    { name: 'Mike Johnson', username: 'MJohnson' }
+    { name: 'Mike Johnson', username: 'MJohnson' },
+    { name: 'Tim Horton', username: 'THorton' },
+    { name: 'James Earl', username: 'JEarl' },
+    { name: 'Earl Jones', username: 'EJones' }
   ];
 
   sampletechnicians.forEach(technician => {
@@ -127,7 +130,7 @@ const db = new sqlite3.Database('./technician_scheduler.db', (err) => {
         console.log(`Inserted technician with ID: ${this.lastID}`);
       }
     });
-  });*/
+  });
 });
 
 module.exports = db;

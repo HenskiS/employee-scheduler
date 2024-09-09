@@ -1,3 +1,6 @@
+// This is my calendar React component.
+// I don't want the calendar component to ever extend beyong the bottom of the page
+// Don't reoutput the whole component, just the code I need to add, and where I need to add it.
 import React, { useState, useEffect } from 'react';
 import axios from '../api/axios';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
@@ -94,9 +97,15 @@ const MyCalendar = () => {
     }
   };
 
+  const calendarStyle = {
+    flex: 1,
+    minHeight: 0,
+    overflowX: 'auto',
+    overflowY: 'auto'
+  };
 
   return (
-    <div>
+    <div className='cal-container'>
         {isDialogOpen && (
             <EventDialog
                 open={isDialogOpen}
@@ -125,11 +134,10 @@ const MyCalendar = () => {
             onSelectEvent={handleSelectEvent}
             onSelectSlot={handleSelectSlot}
             selectable={true}
-            style={{ height: 'calc(100vh - 100px)' }}
+            style={calendarStyle}
         />
     </div>
   );
 };
 
 export default MyCalendar;
-//test
