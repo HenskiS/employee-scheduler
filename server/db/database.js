@@ -1,136 +1,212 @@
 const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+const bcrypt = require('bcrypt');
 
-const db = new sqlite3.Database('./technician_scheduler.db', (err) => {
-  if (err) {
-    console.error('Error opening database', err);
-    return;
-  }
-  console.log('Connected to the SQLite database.');
-  
-  // Wrap all operations in a transaction
-  db.serialize(() => {
-    db.run('BEGIN TRANSACTION');
+const dbPath = path.resolve(__dirname, 'scheduling.db');
+const db = new sqlite3.Database(dbPath);
 
-    const tables = [
-      `CREATE TABLE IF NOT EXISTS clients (
-        client_id INTEGER PRIMARY KEY AUTOINCREMENT,
+function initializeDatabase() {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('PRAGMA foreign_keys = ON');
+
+      // People table (base table for all person types)
+      db.run(`CREATE TABLE IF NOT EXISTS people (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        email TEXT,
-        phone TEXT
-      )`,
-      `CREATE TABLE IF NOT EXISTS technicians (
-        technician_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        username TEXT,
-        password TEXT,
-        email TEXT,
-        phone TEXT
-      )`,
-      `CREATE TABLE IF NOT EXISTS users (
-        user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        phone TEXT,
+        type TEXT NOT NULL
+      )`);
+
+      // Users table (extends People)
+      db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY,
         username TEXT NOT NULL UNIQUE,
-        email TEXT NOT NULL UNIQUE,
-        created_at TEXT DEFAULT (datetime('now'))
-      )`,
-      `CREATE TABLE IF NOT EXISTS events (
-        event_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_name TEXT,
-        description TEXT,
-        start_time TEXT NOT NULL,
-        end_time TEXT NOT NULL,
-        is_all_day INTEGER NOT NULL DEFAULT 0,
-        client_id INTEGER,
-        technician_id INTEGER,
-        label TEXT CHECK(label IN ('Available', 'Unavailable', 'TOR')),
-        created_by INTEGER NOT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        updated_by INTEGER,
-        updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (client_id) REFERENCES clients(client_id),
-        FOREIGN KEY (technician_id) REFERENCES technicians(technician_id),
-        FOREIGN KEY (created_by) REFERENCES users(user_id),
-        FOREIGN KEY (updated_by) REFERENCES users(user_id)
-      )`,
-      `CREATE TABLE IF NOT EXISTS event_history (
-        history_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_id INTEGER NOT NULL,
+        password TEXT NOT NULL,
+        FOREIGN KEY (id) REFERENCES people (id)
+      )`);
+
+      // Doctors table (extends People)
+      db.run(`CREATE TABLE IF NOT EXISTS doctors (
+        id INTEGER PRIMARY KEY,
+        address1 TEXT,
+        address2 TEXT,
+        city TEXT,
+        state TEXT,
+        zip TEXT,
+        FOREIGN KEY (id) REFERENCES people (id)
+      )`);
+
+      // Technicians table (extends People)
+      db.run(`CREATE TABLE IF NOT EXISTS technicians (
+        id INTEGER PRIMARY KEY,
+        FOREIGN KEY (id) REFERENCES people (id)
+      )`);
+
+      // Labels table
+      db.run(`CREATE TABLE IF NOT EXISTS labels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+      )`);
+
+      // Insert default labels
+      db.run(`INSERT OR IGNORE INTO labels (name) VALUES 
+        ('None'), ('Available'), ('Canceled'), ('Holiday'), ('Meeting')`);
+
+      // Events table
+      db.run(`CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         description TEXT,
-        start_time TEXT NOT NULL,
-        end_time TEXT NOT NULL,
-        is_all_day INTEGER NOT NULL,
-        client_id INTEGER,
-        technician_id INTEGER,
-        event_name TEXT,
-        label TEXT CHECK(label IN ('Available', 'Unavailable', 'TOR')),
-        changed_by INTEGER NOT NULL,
-        changed_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (event_id) REFERENCES events(event_id),
-        FOREIGN KEY (client_id) REFERENCES clients(client_id),
-        FOREIGN KEY (technician_id) REFERENCES technicians(technician_id),
-        FOREIGN KEY (changed_by) REFERENCES users(user_id)
-      )`
-    ];
+        start_time DATETIME NOT NULL,
+        end_time DATETIME NOT NULL,
+        is_all_day BOOLEAN NOT NULL DEFAULT 0,
+        label_id INTEGER,
+        created_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (label_id) REFERENCES labels (id),
+        FOREIGN KEY (created_by) REFERENCES people (id)
+      )`);
 
-    const indexes = [
-      'CREATE INDEX IF NOT EXISTS idx_event_start_time ON events(start_time)',
-      'CREATE INDEX IF NOT EXISTS idx_event_end_time ON events(end_time)',
-      'CREATE INDEX IF NOT EXISTS idx_event_label ON events(label)',
-      'CREATE INDEX IF NOT EXISTS idx_event_history_event_id ON event_history(event_id)',
-      'CREATE INDEX IF NOT EXISTS idx_event_history_changed_at ON event_history(changed_at)'
-    ];
+      // Event attendees (many-to-many relationship between events and people)
+      db.run(`CREATE TABLE IF NOT EXISTS event_attendees (
+        event_id INTEGER,
+        person_id INTEGER,
+        FOREIGN KEY (event_id) REFERENCES events (id),
+        FOREIGN KEY (person_id) REFERENCES people (id),
+        PRIMARY KEY (event_id, person_id)
+      )`);
 
-    // Create tables
-    tables.forEach((table, index) => {
-      db.run(table, (err) => {
-        if (err) {
-          console.error(`Error creating table ${index + 1}:`, err);
-          db.run('ROLLBACK');
-        } else {
-          console.log(`Table ${index + 1} created successfully`);
-        }
-      });
-    });
-
-    // Create indexes
-    indexes.forEach((index, i) => {
-      db.run(index, (err) => {
-        if (err) {
-          console.error(`Error creating index ${i + 1}:`, err);
-          db.run('ROLLBACK');
-        } else {
-          console.log(`Index ${i + 1} created successfully`);
-        }
-      });
-    });
-
-    db.run('COMMIT', (err) => {
+    }, (err) => {
       if (err) {
-        console.error('Error committing transaction:', err);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+function addPerson(person) {
+  return new Promise((resolve, reject) => {
+    db.run('INSERT INTO people (name, email, phone, type) VALUES (?, ?, ?, ?)',
+      [person.name, person.email, person.phone, person.type],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+}
+
+function addUser(user) {
+  return new Promise((resolve, reject) => {
+    db.run('BEGIN TRANSACTION');
+    addPerson({...user, type: 'user'})
+      .then(personId => {
+        bcrypt.hash(user.password, 10, (err, hash) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+          db.run('INSERT INTO users (id, username, password) VALUES (?, ?, ?)',
+            [personId, user.username, hash],
+            (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                reject(err);
+              } else {
+                db.run('COMMIT');
+                resolve(personId);
+              }
+            }
+          );
+        });
+      })
+      .catch(err => {
         db.run('ROLLBACK');
-      } else {
-        console.log('All tables and indexes created successfully');
-      }
-    });
+        reject(err);
+      });
   });
-  const sampletechnicians = [
-    { name: 'John Doe', username: 'JDoe' },
-    { name: 'Jane Smith', username: 'JSmith' },
-    { name: 'Mike Johnson', username: 'MJohnson' },
-    { name: 'Tim Horton', username: 'THorton' },
-    { name: 'James Earl', username: 'JEarl' },
-    { name: 'Earl Jones', username: 'EJones' }
-  ];
+}
 
-  sampletechnicians.forEach(technician => {
-    db.run('INSERT INTO technicians (name, username) VALUES (?, ?)', [technician.name, technician.username], function(err) {
-      if (err) {
-        console.error('Error inserting technician:', err);
-      } else {
-        console.log(`Inserted technician with ID: ${this.lastID}`);
-      }
-    });
+function addDoctor(doctor) {
+  return new Promise((resolve, reject) => {
+    db.run('BEGIN TRANSACTION');
+    addPerson({...doctor, type: 'doctor'})
+      .then(personId => {
+        db.run('INSERT INTO doctors (id, address1, address2, city, state, zip) VALUES (?, ?, ?, ?, ?, ?)',
+          [personId, doctor.address1, doctor.address2, doctor.city, doctor.state, doctor.zip],
+          (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              reject(err);
+            } else {
+              db.run('COMMIT');
+              resolve(personId);
+            }
+          }
+        );
+      })
+      .catch(err => {
+        db.run('ROLLBACK');
+        reject(err);
+      });
   });
-});
+}
 
-module.exports = db;
+function addTechnician(technician) {
+  return new Promise((resolve, reject) => {
+    db.run('BEGIN TRANSACTION');
+    addPerson({...technician, type: 'technician'})
+      .then(personId => {
+        db.run('INSERT INTO technicians (id) VALUES (?)',
+          [personId],
+          (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              reject(err);
+            } else {
+              db.run('COMMIT');
+              resolve(personId);
+            }
+          }
+        );
+      })
+      .catch(err => {
+        db.run('ROLLBACK');
+        reject(err);
+      });
+  });
+}
+
+function addEvent(event) {
+  return new Promise((resolve, reject) => {
+    db.run(`INSERT INTO events 
+      (name, description, start_time, end_time, is_all_day, label_id, created_by) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [event.name, event.description, event.start_time, event.end_time, 
+       event.is_all_day ? 1 : 0, event.label_id, event.created_by],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+}
+
+module.exports = {
+  initializeDatabase,
+  addUser,
+  addDoctor,
+  addTechnician,
+  addEvent,
+  db  // Exporting the database connection for other operations
+};
