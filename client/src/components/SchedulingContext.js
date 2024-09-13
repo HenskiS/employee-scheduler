@@ -18,18 +18,20 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         try {
             setLoading(true);
             
-            /*const [doctorsData, techniciansData, eventsData] = await Promise.all([
-                fetch('/api/doctors').then(res => res.json()),
-                fetch('/api/technicians').then(res => res.json()),
-                fetch('/api/events').then(res => res.json())
-            ]);*/
-
-            const response = await axios.get('/api/technicians');
+            const [doctorsData, techniciansData, eventsData] = await Promise.all([
+                axios.get('/api/doctors').then(res => res.json()),
+                axios.get('/api/technicians').then(res => res.json()),
+                axios.get('/api/events').then(res => res.json())
+            ]);
+            /*const response = await axios.get('/api/technicians');
             setTechnicians(response.data);
 
-            //setDoctors(doctorsData);
-            //setTechnicians(techniciansData);
-            //setEvents(eventsData);
+            const response = await axios.get('/api/events');
+            setEvents(response.data);*/
+
+            setDoctors(doctorsData);
+            setTechnicians(techniciansData);
+            setEvents(eventsData);
             setError(null);
         } catch (err) {
         setError(err.message);

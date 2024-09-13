@@ -11,14 +11,29 @@ import { useScheduling } from './SchedulingContext';
 
 const localizer = momentLocalizer(moment);
 
-const MyCalendar = () => {
-  const { technicians } = useScheduling()
+const throughThirty = [
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+  "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+  "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"
+];
+
+const MyCalendar = ({ view }) => {
+  const { technicians, events, refreshData } = useScheduling()
   //const [technicians, settechnicians] = useState([]);
-  const [events, setEvents] = useState([]);
+  //const [events, setEvents] = useState([]);
+  const [resources, setResources] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [newEvent, setNewEvent] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  useEffect(()=>{
+    let r
+    if (view === "jobs")
+      r = throughThirty.map(num => ({ id: num, title: num}))
+    else r = technicians.map(technician => ({ id: technician.id, title: technician.name })) 
+    setResources(r)
+  }, [view, technicians])
 
   /*const fetchtechnicians = async () => {
     try {
@@ -29,7 +44,7 @@ const MyCalendar = () => {
     }
   };*/
 
-  const fetchEvents = async () => {
+  /*const fetchEvents = async () => {
     try {
       const response = await axios.get(`/api/events/`) //range/${selectedDate.toISOString()}/${selectedDate.toISOString()}`);
       const formattedEvents = response.data.map(event => ({
@@ -50,7 +65,7 @@ const MyCalendar = () => {
   useEffect(() => {
     //fetchtechnicians();
     fetchEvents();
-  }, [selectedDate]);
+  }, [selectedDate]);*/
 
   const findtechnicianById = (technicianId) => {
     return technicians.find(technician => technician.technician_id === technicianId) || null;
@@ -92,7 +107,7 @@ const MyCalendar = () => {
       } else {
         await axios.post('/api/events', eventData);
       }
-      fetchEvents();
+      refreshData(); //fetchEvents();
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving event:', error);
@@ -130,7 +145,7 @@ const MyCalendar = () => {
             max={new Date(2023, 0, 1, 21, 0, 0)}
             date={selectedDate}
             onNavigate={(date) => setSelectedDate(date)}
-            resources={technicians.map(technician => ({ id: technician.id, title: technician.name }))}
+            resources={resources}
             resourceIdAccessor="id"
             resourceTitleAccessor="title"
             onSelectEvent={handleSelectEvent}
