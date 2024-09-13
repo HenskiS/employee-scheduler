@@ -35,10 +35,12 @@ const MyCalendar = () => {
       const formattedEvents = response.data.map(event => ({
         id: event.id,
         title: event.title,
-        start: new Date(`${selectedDate.toDateString()} ${event.time}`),
-        end: new Date(`${selectedDate.toDateString()} ${moment(event.time, 'HH:mm').add(1, 'hour').format('HH:mm')}`),
-        resourceId: event.technicianId,
+        start: new Date(event.start_time),
+        end: new Date(event.end_time),
+        resourceId: event.attendees[0],
       }));
+      console.log("events:")
+      console.log(formattedEvents)
       setEvents(formattedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -79,16 +81,16 @@ const MyCalendar = () => {
 
   const handleSaveEvent = async (event) => {
     try {
-      const eventData = event/*{
+      const eventData = {...event, attendees: [event.technicianId]}/*{
         title: event.title,
         time: moment(event.start).format('HH:mm'),
         technicianId: event.resourceId,
       };*/
 
       if (event.id) {
-        await axios.put(`/api/events/${event.id}`, event);
+        await axios.put(`/api/events/${event.id}`, eventData);
       } else {
-        await axios.post('/api/events', event);
+        await axios.post('/api/events', eventData);
       }
       fetchEvents();
       handleCloseDialog();
@@ -128,8 +130,8 @@ const MyCalendar = () => {
             max={new Date(2023, 0, 1, 21, 0, 0)}
             date={selectedDate}
             onNavigate={(date) => setSelectedDate(date)}
-            resources={technicians.map(technician => ({ id: technician.technician_id, title: technician.name }))}
-            //resourceIdAccessor="id"
+            resources={technicians.map(technician => ({ id: technician.id, title: technician.name }))}
+            resourceIdAccessor="id"
             resourceTitleAccessor="title"
             onSelectEvent={handleSelectEvent}
             onSelectSlot={handleSelectSlot}

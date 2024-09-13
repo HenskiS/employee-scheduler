@@ -172,7 +172,8 @@ function addTechnician(technician) {
       });
   });
 }
-
+/*
+// I need this to also be able to add event_attendees, so I can call this function from my frontend via an api endpoint.
 function addEvent(event) {
   return new Promise((resolve, reject) => {
     db.run(`INSERT INTO events 
@@ -190,6 +191,42 @@ function addEvent(event) {
     );
   });
 }
+*/
+function addEvent(event) {
+  return new Promise((resolve, reject) => {
+    db.run(`INSERT INTO events 
+      (name, description, start_time, end_time, is_all_day, label, created_by) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [event.name, event.description, event.start_time, event.end_time, 
+       event.is_all_day ? 1 : 0, event.label, event.created_by],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          const eventId = this.lastID;
+          if (event.attendees && event.attendees.length > 0) {
+            const attendeeValues = event.attendees.map(attendee => `(${eventId}, ?)`).join(',');
+            const attendeeParams = event.attendees.flat();
+            
+            db.run(`INSERT INTO event_attendees (event_id, person_id) VALUES ${attendeeValues}`,
+              attendeeParams,
+              function(err) {
+                if (err) {
+                  reject(err);
+                } else {
+                  resolve(eventId);
+                }
+              }
+            );
+          } else {
+            resolve(eventId);
+          }
+        }
+      }
+    );
+  });
+}
+
 
 module.exports = {
   initializeDatabase,

@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { addEvent, db } = require('../db/database');
-
+/*
+// Modify this function to also return the event attendees for each event, which are stored in the table event_attendees (event_id, person_id)
 // GET all events
 router.get('/', (req, res) => {
   db.all(`
-    SELECT e.*, l.name as label_name, p.name as created_by_name 
+    SELECT e.*, p.name as created_by_name 
     FROM events e
-    LEFT JOIN labels l ON e.label_id = l.id
     LEFT JOIN people p ON e.created_by = p.id
   `, (err, rows) => {
     if (err) {
@@ -16,8 +16,33 @@ router.get('/', (req, res) => {
     }
     res.json(rows);
   });
+});*/
+
+router.get('/', (req, res) => {
+  db.all(`
+    SELECT e.*, p.name as created_by_name,
+    (SELECT GROUP_CONCAT(person_id) FROM event_attendees WHERE event_id = e.id) as attendees
+    FROM events e
+    LEFT JOIN people p ON e.created_by = p.id
+  `, (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    
+    const eventsWithAttendees = rows.map(row => ({
+      ...row,
+      attendees: row.attendees ? row.attendees.split(',').map(Number) : []
+    }));
+    
+    res.json(eventsWithAttendees);
+  });
 });
 
+//
+
+/*
+// Modifythe route to also get all the people associated with this event, which is stored in the event_attendees (event_id, person_id) table
 // GET a single event
 router.get('/:id', (req, res) => {
   db.get(`
@@ -36,6 +61,41 @@ router.get('/:id', (req, res) => {
       return;
     }
     res.json(row);
+  });
+});*/
+// GET a single event with associated attendees
+router.get('/:id', (req, res) => {
+  db.get(`
+    SELECT e.*, p.name as created_by_name 
+    FROM events e
+    LEFT JOIN people p ON e.created_by = p.id
+    WHERE e.id = ?
+  `, [req.params.id], (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    if (!row) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+
+    // Get attendees for the event
+    db.all(`
+      SELECT p.id, p.name
+      FROM event_attendees ea
+      JOIN people p ON ea.person_id = p.id
+      WHERE ea.event_id = ?
+    `, [req.params.id], (attendeesErr, attendees) => {
+      if (attendeesErr) {
+        res.status(500).json({ error: attendeesErr.message });
+        return;
+      }
+
+      // Add attendees to the event object
+      row.attendees = attendees;
+      res.json(row);
+    });
   });
 });
 

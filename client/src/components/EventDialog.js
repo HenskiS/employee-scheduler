@@ -18,7 +18,6 @@ import { useScheduling } from './SchedulingContext';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const { technicians, labels } = useScheduling();
-  console.log(technicians)
 
   const [formData, setFormData] = useState({
     name: '',
