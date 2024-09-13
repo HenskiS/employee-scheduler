@@ -1,103 +1,96 @@
 const express = require('express');
 const router = express.Router();
-const { addUser, db } = require('../db/database');
-const bcrypt = require('bcrypt');
+const User = require('../models/User');
+const authMiddleware = require('../middleware/auth');
+const { hashPassword, comparePassword } = require('../utils/passwordUtils');
+const jwt = require('jsonwebtoken');
 
-// GET all users
-router.get('/', (req, res) => {
-  db.all('SELECT id, name, email, phone, username FROM people JOIN users ON people.id = users.id', (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
-});
-
-// GET a single user
-router.get('/:id', (req, res) => {
-  db.get('SELECT id, name, email, phone, username FROM people JOIN users ON people.id = users.id WHERE people.id = ?', [req.params.id], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    if (!row) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-    res.json(row);
-  });
-});
-
-// POST a new user
-router.post('/', async (req, res) => {
+// Register a new user
+router.post('/register', async (req, res) => {
   try {
-    const userId = await addUser(req.body);
-    res.status(201).json({ id: userId, ...req.body, password: undefined });
+    const { name, email, username, password } = req.body;
+    const hashedPassword = await hashPassword(password);
+    const user = await User.create({ name, email, username, password: hashedPassword });
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Login
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ where: { username } });
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.json({ token });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// PUT (update) a user
-router.put('/:id', (req, res) => {
-  const { name, email, phone, username, password } = req.body;
-  db.run(
-    'UPDATE people SET name = ?, email = ?, phone = ? WHERE id = ?',
-    [name, email, phone, req.params.id],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      if (this.changes === 0) {
-        res.status(404).json({ error: 'User not found' });
-        return;
-      }
-      if (username || password) {
-        if (password) {
-          bcrypt.hash(password, 10, (err, hash) => {
-            if (err) {
-              res.status(500).json({ error: err.message });
-              return;
-            }
-            db.run('UPDATE users SET username = ?, password = ? WHERE id = ?', [username, hash, req.params.id], (err) => {
-              if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-              }
-              res.json({ message: 'User updated successfully', id: req.params.id });
-            });
-          });
-        } else {
-          db.run('UPDATE users SET username = ? WHERE id = ?', [username, req.params.id], (err) => {
-            if (err) {
-              res.status(500).json({ error: err.message });
-              return;
-            }
-            res.json({ message: 'User updated successfully', id: req.params.id });
-          });
-        }
-      } else {
-        res.json({ message: 'User updated successfully', id: req.params.id });
-      }
-    }
-  );
+// Get all users (protected route)
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const users = await User.findAll({ attributes: { exclude: ['password'] } });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// DELETE a user
-router.delete('/:id', (req, res) => {
-  db.run('DELETE FROM people WHERE id = ?', req.params.id, function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    if (this.changes === 0) {
+// Get a specific user (protected route)
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id, { attributes: { exclude: ['password'] } });
+    if (user) {
+      res.json(user);
+    } else {
       res.status(404).json({ error: 'User not found' });
-      return;
     }
-    res.json({ message: 'User deleted successfully', id: req.params.id });
-  });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a user (protected route)
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (user) {
+      if (req.body.password) {
+        req.body.password = await hashPassword(req.body.password);
+      }
+      await user.update(req.body);
+      res.json({ message: 'User updated successfully' });
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Delete a user (protected route)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (user) {
+      await user.destroy();
+      res.status(204).end();
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 module.exports = router;

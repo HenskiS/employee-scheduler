@@ -1,86 +1,70 @@
 const express = require('express');
 const router = express.Router();
-const { addTechnician, db } = require('../db/database');
+const Technician = require('../models/Technician');
+const authMiddleware = require('../middleware/auth');
 
-// GET all technicians
-router.get('/', (req, res) => {
-  db.all(`
-    SELECT p.id, p.name, p.email, p.phone 
-    FROM people p 
-    JOIN technicians t ON p.id = t.id
-    WHERE p.type = 'technician'
-  `, (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
-});
-
-// GET a single technician
-router.get('/:id', (req, res) => {
-  db.get(`
-    SELECT p.id, p.name, p.email, p.phone 
-    FROM people p 
-    JOIN technicians t ON p.id = t.id
-    WHERE p.id = ? AND p.type = 'technician'
-  `, [req.params.id], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    if (!row) {
-      res.status(404).json({ error: 'Technician not found' });
-      return;
-    }
-    res.json(row);
-  });
-});
-
-// POST a new technician
-router.post('/', async (req, res) => {
+// Create a new technician
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const technicianId = await addTechnician(req.body);
-    res.status(201).json({ id: technicianId, ...req.body });
+    const technician = await Technician.create(req.body);
+    res.status(201).json(technician);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get all technicians
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const technicians = await Technician.findAll();
+    res.json(technicians);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// PUT (update) a technician
-router.put('/:id', (req, res) => {
-  const { name, email, phone } = req.body;
-  db.run(
-    'UPDATE people SET name = ?, email = ?, phone = ? WHERE id = ? AND type = "technician"',
-    [name, email, phone, req.params.id],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      if (this.changes === 0) {
-        res.status(404).json({ error: 'Technician not found' });
-        return;
-      }
-      res.json({ message: 'Technician updated successfully', id: req.params.id });
+// Get a specific technician
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const technician = await Technician.findByPk(req.params.id);
+    if (technician) {
+      res.json(technician);
+    } else {
+      res.status(404).json({ error: 'Technician not found' });
     }
-  );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// DELETE a technician
-router.delete('/:id', (req, res) => {
-  db.run('DELETE FROM people WHERE id = ? AND type = "technician"', req.params.id, function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    if (this.changes === 0) {
+// Update a technician
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const technician = await Technician.findByPk(req.params.id);
+    if (technician) {
+      await technician.update(req.body);
+      res.json(technician);
+    } else {
       res.status(404).json({ error: 'Technician not found' });
-      return;
     }
-    res.json({ message: 'Technician deleted successfully', id: req.params.id });
-  });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Delete a technician
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const technician = await Technician.findByPk(req.params.id);
+    if (technician) {
+      await technician.destroy();
+      res.status(204).end();
+    } else {
+      res.status(404).json({ error: 'Technician not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 module.exports = router;

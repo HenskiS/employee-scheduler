@@ -1,151 +1,97 @@
 const express = require('express');
 const router = express.Router();
-const { addEvent, db } = require('../db/database');
-/*
-// Modify this function to also return the event attendees for each event, which are stored in the table event_attendees (event_id, person_id)
-// GET all events
-router.get('/', (req, res) => {
-  db.all(`
-    SELECT e.*, p.name as created_by_name 
-    FROM events e
-    LEFT JOIN people p ON e.created_by = p.id
-  `, (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
-});*/
+const Event = require('../models/Event');
+const Technician = require('../models/Technician');
+const authMiddleware = require('../middleware/auth');
 
-router.get('/', (req, res) => {
-  db.all(`
-    SELECT e.*, p.name as created_by_name,
-    (SELECT GROUP_CONCAT(person_id) FROM event_attendees WHERE event_id = e.id) as attendees
-    FROM events e
-    LEFT JOIN people p ON e.created_by = p.id
-  `, (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    
-    const eventsWithAttendees = rows.map(row => ({
-      ...row,
-      attendees: row.attendees ? row.attendees.split(',').map(Number) : []
-    }));
-    
-    res.json(eventsWithAttendees);
-  });
-});
-
-//
-
-/*
-// Modifythe route to also get all the people associated with this event, which is stored in the event_attendees (event_id, person_id) table
-// GET a single event
-router.get('/:id', (req, res) => {
-  db.get(`
-    SELECT e.*, l.name as label_name, p.name as created_by_name 
-    FROM events e
-    LEFT JOIN labels l ON e.label_id = l.id
-    LEFT JOIN people p ON e.created_by = p.id
-    WHERE e.id = ?
-  `, [req.params.id], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    if (!row) {
-      res.status(404).json({ error: 'Event not found' });
-      return;
-    }
-    res.json(row);
-  });
-});*/
-// GET a single event with associated attendees
-router.get('/:id', (req, res) => {
-  db.get(`
-    SELECT e.*, p.name as created_by_name 
-    FROM events e
-    LEFT JOIN people p ON e.created_by = p.id
-    WHERE e.id = ?
-  `, [req.params.id], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    if (!row) {
-      res.status(404).json({ error: 'Event not found' });
-      return;
-    }
-
-    // Get attendees for the event
-    db.all(`
-      SELECT p.id, p.name
-      FROM event_attendees ea
-      JOIN people p ON ea.person_id = p.id
-      WHERE ea.event_id = ?
-    `, [req.params.id], (attendeesErr, attendees) => {
-      if (attendeesErr) {
-        res.status(500).json({ error: attendeesErr.message });
-        return;
-      }
-
-      // Add attendees to the event object
-      row.attendees = attendees;
-      res.json(row);
-    });
-  });
-});
-
-// POST a new event
-router.post('/', async (req, res) => {
-  console.log(req.body)
+// Create a new event
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const eventId = await addEvent(req.body);
-    res.status(201).json({ id: eventId, ...req.body });
+    const { technicianIds, ...eventData } = req.body;
+    const event = await Event.create({ ...eventData, createdBy: req.user.id });
+
+    if (technicianIds && technicianIds.length > 0) {
+      await event.addTechnicians(technicianIds);
+    }
+
+    const createdEvent = await Event.findByPk(event.id, {
+      include: [{ model: Technician, through: { attributes: [] } }]
+    });
+
+    res.status(201).json(createdEvent);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get all events
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const events = await Event.findAll({ include: [{ model: Technician, through: { attributes: [] } }] });
+    res.json(events);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// PUT (update) an event
-router.put('/:id', (req, res) => {
-  const { name, description, start_time, end_time, is_all_day, label_id, created_by } = req.body;
-  db.run(
-    `UPDATE events SET 
-      name = ?, description = ?, start_time = ?, end_time = ?, 
-      is_all_day = ?, label_id = ?, created_by = ?
-    WHERE id = ?`,
-    [name, description, start_time, end_time, is_all_day ? 1 : 0, label_id, created_by, req.params.id],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      if (this.changes === 0) {
-        res.status(404).json({ error: 'Event not found' });
-        return;
-      }
-      res.json({ message: 'Event updated successfully', id: req.params.id });
+// Get a specific event
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id, { include: [{ model: Technician, through: { attributes: [] } }] });
+    if (event) {
+      res.json(event);
+    } else {
+      res.status(404).json({ error: 'Event not found' });
     }
-  );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// DELETE an event
-router.delete('/:id', (req, res) => {
-  db.run('DELETE FROM events WHERE id = ?', req.params.id, function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    if (this.changes === 0) {
+// Update an event
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id);
+    if (event) {
+      await event.update(req.body);
+      res.json(event);
+    } else {
       res.status(404).json({ error: 'Event not found' });
-      return;
     }
-    res.json({ message: 'Event deleted successfully', id: req.params.id });
-  });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Delete an event
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id);
+    if (event) {
+      await event.destroy();
+      res.status(204).end();
+    } else {
+      res.status(404).json({ error: 'Event not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Assign a technician to an event
+router.post('/:id/assign', authMiddleware, async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id);
+    const technician = await Technician.findByPk(req.body.technicianId);
+    if (event && technician) {
+      await event.addTechnician(technician);
+      res.json({ message: 'Technician assigned successfully' });
+    } else {
+      res.status(404).json({ error: 'Event or Technician not found' });
+    }
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 module.exports = router;

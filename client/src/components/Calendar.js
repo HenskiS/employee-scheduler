@@ -1,143 +1,133 @@
-// This is my calendar React component.
-// I don't want the calendar component to ever extend beyong the bottom of the page
-// Don't reoutput the whole component, just the code I need to add, and where I need to add it.
-import React, { useState, useEffect } from 'react';
-import axios from '../api/axios';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import EventDialog from './EventDialog';
 import { useScheduling } from './SchedulingContext';
+import EventDialog from './EventDialog';
 
 const localizer = momentLocalizer(moment);
 
 const MyCalendar = () => {
-  const { technicians } = useScheduling()
-  //const [technicians, settechnicians] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [view, setView] = useState('jobs');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [newEvent, setNewEvent] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  /*const fetchtechnicians = async () => {
-    try {
-      const response = await axios.get('/api/technicians');
-      settechnicians(response.data);
-    } catch (error) {
-      console.error('Error fetching technicians:', error);
-    }
-  };*/
-
-  const fetchEvents = async () => {
-    try {
-      const response = await axios.get(`/api/events/`) //range/${selectedDate.toISOString()}/${selectedDate.toISOString()}`);
-      const formattedEvents = response.data.map(event => ({
-        id: event.id,
-        title: event.title,
-        start: new Date(event.start_time),
-        end: new Date(event.end_time),
-        resourceId: event.attendees[0],
-      }));
-      console.log("events:")
-      console.log(formattedEvents)
-      setEvents(formattedEvents);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    }
-  };
+  const [showEventDialog, setShowEventDialog] = useState(false);
+  const [events, setEvents] = useState([]);
+  const { technicians } = useScheduling();
 
   useEffect(() => {
-    //fetchtechnicians();
+    const fetchEvents = async () => {
+      try {
+        // Adjust the URL and date format as needed for your API
+        const response = await fetch(`http://localhost:5000/api/events`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch events');
+        }
+        const data = await response.json();
+        setEvents(data);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        // Handle error (e.g., show an error message to the user)
+      }
+    };
+
     fetchEvents();
   }, [selectedDate]);
 
-  const findtechnicianById = (technicianId) => {
-    return technicians.find(technician => technician.technician_id === technicianId) || null;
-  };
+  const handleSelectSlot = useCallback((slotInfo) => {
+    setSelectedEvent({
+      start: slotInfo.start,
+      end: slotInfo.end,
+    });
+    console.log({
+      start: slotInfo.start,
+      end: slotInfo.end,
+    })
+    setShowEventDialog(true);
+  }, []);
 
-  const handleSelectEvent = (event) => {
+  const handleSelectEvent = useCallback((event) => {
     setSelectedEvent(event);
-    setNewEvent(null)
-    setIsDialogOpen(true);
+    setShowEventDialog(true);
+  }, []);
+
+  const handleCloseEventDialog = () => {
+    setShowEventDialog(false);
+    setSelectedEvent(null);
   };
 
-  const handleSelectSlot = (slotInfo) => {
-    const { start, end, resourceId } = slotInfo;
-    const newEvent = {
-      start,
-      end,
-      technician: findtechnicianById(resourceId),
+  const eventStyleGetter = (event) => {
+    const style = {
+      backgroundColor: '#3174ad',
+      borderRadius: '0px',
+      opacity: 0.8,
+      color: 'white',
+      border: '0px',
+      display: 'block'
     };
-    setSelectedEvent(null);
-    setNewEvent(newEvent);
-    setIsDialogOpen(true);
+    return { style };
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setSelectedEvent(null);
+  const formats = {
+    dayFormat: (date, culture, localizer) =>
+      localizer.format(date, 'ddd MM/DD', culture),
   };
 
-  const handleSaveEvent = async (event) => {
-    try {
-      const eventData = {...event, attendees: [event.technicianId]}/*{
-        title: event.title,
-        time: moment(event.start).format('HH:mm'),
-        technicianId: event.resourceId,
-      };*/
-
-      if (event.id) {
-        await axios.put(`/api/events/${event.id}`, eventData);
-      } else {
-        await axios.post('/api/events', eventData);
-      }
-      fetchEvents();
-      handleCloseDialog();
-    } catch (error) {
-      console.error('Error saving event:', error);
+  const getCalendarView = () => {
+    if (view === 'jobs') {
+      return {
+        groups: Array.from(new Set(events.map(event => event.jobNumber))),
+        groupBy: 'jobNumber'
+      };
+    } else {
+      return {
+        groups: technicians.map(tech => tech.id),
+        groupBy: 'technicianId'
+      };
     }
   };
 
-  const calendarStyle = {
-    flex: 1,
-    minHeight: 0,
-    overflowX: 'auto',
-    overflowY: 'auto'
-  };
-
   return (
-    <div className='cal-container'>
-        {isDialogOpen && (
-            <EventDialog
-                open={isDialogOpen}
-                event={selectedEvent}
-                newEvent={newEvent}
-                onClose={handleCloseDialog} 
-                onSave={handleSaveEvent}
-            />
-        )}
-        <Calendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            defaultView="day"
-            views={['day']}
-            step={60}
-            timeslots={1}
-            min={new Date(2023, 0, 1, 6, 0, 0)}
-            max={new Date(2023, 0, 1, 21, 0, 0)}
-            date={selectedDate}
-            onNavigate={(date) => setSelectedDate(date)}
-            resources={technicians.map(technician => ({ id: technician.id, title: technician.name }))}
-            resourceIdAccessor="id"
-            resourceTitleAccessor="title"
-            onSelectEvent={handleSelectEvent}
-            onSelectSlot={handleSelectSlot}
-            selectable={true}
-            style={calendarStyle}
+    <div>
+      <div>
+        <button onClick={() => setView('jobs')}>Jobs View</button>
+        <button onClick={() => setView('technicians')}>Technicians View</button>
+      </div>
+      <Calendar
+        localizer={localizer}
+        events={events}
+        startAccessor="start"
+        endAccessor="end"
+        style={{ height: 'calc(100vh - 100px)' }}
+        step={15}
+        timeslots={4}
+        defaultView="day"
+        views={['day']}
+        min={moment().hours(6).minutes(0).toDate()}
+        max={moment().hours(21).minutes(0).toDate()}
+        onSelectSlot={handleSelectSlot}
+        onSelectEvent={handleSelectEvent}
+        eventPropGetter={eventStyleGetter}
+        formats={formats}
+        date={selectedDate}
+        onNavigate={date => setSelectedDate(date)}
+        {...getCalendarView()}
+      />
+      {showEventDialog && (
+        <EventDialog
+          event={selectedEvent}
+          onClose={handleCloseEventDialog}
+          view={view}
+          onEventUpdate={(updatedEvent) => {
+            setEvents(prevEvents => 
+              prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e)
+            );
+          }}
+          onEventCreate={(newEvent) => {
+            setEvents(prevEvents => [...prevEvents, newEvent]);
+          }}
         />
+      )}
     </div>
   );
 };
