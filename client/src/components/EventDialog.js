@@ -1,164 +1,162 @@
 import React, { useState, useEffect } from 'react';
-import { useScheduling } from './SchedulingContext';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  MenuItem,
+  FormControlLabel,
+  Checkbox,
+} from '@mui/material';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
+import { useScheduling } from './SchedulingContext';
 
-const EventDialog = ({ event, onClose, view, onEventUpdate, onEventCreate }) => {
-  const { technicians } = useScheduling();
+function EventDialog({ open, onClose, event, onSave, newEvent }) {
+  const { technicians, labels } = useScheduling();
+  console.log(technicians)
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    startTime: '',
-    endTime: '',
-    allDay: false,
-    label: '',
-    jobNumber: '',
-    technicianIds: [],
+    start_time: moment(),
+    end_time: moment().add(1, 'hour'),
+    isAllDay: false,
+    labelId: '',
+    technicianId: '',
   });
 
   useEffect(() => {
     if (event) {
       setFormData({
-        name: event.name || '',
-        description: event.description || '',
-        startTime: moment(event.start).format('YYYY-MM-DDTHH:mm'),
-        endTime: moment(event.end).format('YYYY-MM-DDTHH:mm'),
-        allDay: event.allDay || false,
-        label: event.label || '',
-        jobNumber: event.jobNumber || '',
-        technicianIds: event.technicianIds || [],
+        ...event,
+        start_time: moment(event.start),
+        end_time: moment(event.end),
+      });
+    } else if (newEvent) {
+      setFormData({
+        ...formData,
+        start_time: moment(newEvent.start),
+        end_time: moment(newEvent.end),
       });
     }
-  }, [event]);
+  }, [event, newEvent]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prevData => ({
-      ...prevData,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
-  const handleTechnicianChange = (techId) => {
-    setFormData(prevData => ({
-      ...prevData,
-      technicianIds: prevData.technicianIds.includes(techId)
-        ? prevData.technicianIds.filter(id => id !== techId)
-        : [...prevData.technicianIds, techId]
-    }));
+  const handleDateChange = (name) => (date) => {
+    setFormData({ ...formData, [name]: date });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (event && event.id) {
-        // Update existing event
-        const response = await fetch(`/api/events/${event.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to update event');
-        }
-        const updatedEvent = await response.json();
-        onEventUpdate(updatedEvent);
-      } else {
-        // Create new event
-        const response = await fetch('/api/events', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to create event');
-        }
-        const newEvent = await response.json();
-        onEventCreate(newEvent);
-      }
-      onClose();
-    } catch (error) {
-      console.error('Error saving event:', error);
-      // Handle error (e.g., show an error message to the user)
-    }
+  const handleCheckboxChange = (e) => {
+    const { name, checked } = e.target;
+    setFormData({ ...formData, [name]: checked });
+  };
+
+  const handleSubmit = () => {
+    onSave({
+      ...formData,
+      start_time: formData.start_time.toISOString(),
+      end_time: formData.end_time.toISOString(),
+    });
+    onClose();
   };
 
   return (
-    <div className="event-dialog">
-      <h2>{event ? 'Edit Event' : 'Add New Event'}</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          placeholder="Event Name"
-          required
-        />
-        <textarea
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          placeholder="Description"
-        />
-        <input
-          type="datetime-local"
-          name="startTime"
-          value={formData.startTime}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="datetime-local"
-          name="endTime"
-          value={formData.endTime}
-          onChange={handleChange}
-          required
-        />
-        <label>
-          <input
-            type="checkbox"
-            name="allDay"
-            checked={formData.allDay}
-            onChange={handleChange}
+    <LocalizationProvider dateAdapter={AdapterMoment}>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{event ? 'Edit Event' : 'New Event'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            name="name"
+            label="Name"
+            type="text"
+            fullWidth
+            value={formData.name}
+            onChange={handleInputChange}
           />
-          All Day
-        </label>
-        <input
-          type="text"
-          name="label"
-          value={formData.label}
-          onChange={handleChange}
-          placeholder="Label"
-        />
-        <input
-          type="text"
-          name="jobNumber"
-          value={formData.jobNumber}
-          onChange={handleChange}
-          placeholder="Job Number"
-        />
-        <div>
-          <h3>Assign Technicians:</h3>
-          {technicians.map(tech => (
-            <label key={tech.id}>
-              <input
-                type="checkbox"
-                checked={formData.technicianIds.includes(tech.id)}
-                onChange={() => handleTechnicianChange(tech.id)}
+          <TextField
+            margin="dense"
+            name="description"
+            label="Description"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={formData.description}
+            onChange={handleInputChange}
+          />
+          <DateTimePicker
+            label="Start"
+            value={formData.start_time}
+            onChange={handleDateChange('start_time')}
+            renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
+          />
+          <DateTimePicker
+            label="End"
+            value={formData.end}
+            onChange={handleDateChange('end_time')}
+            renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formData.isAllDay}
+                onChange={handleCheckboxChange}
+                name="isAllDay"
               />
-              {tech.name}
-            </label>
-          ))}
-        </div>
-        <button type="submit">Save</button>
-        <button type="button" onClick={onClose}>Cancel</button>
-      </form>
-    </div>
+            }
+            label="All Day"
+          />
+          <TextField
+            select
+            margin="dense"
+            name="labelId"
+            label="Label"
+            fullWidth
+            value={formData.labelId}
+            onChange={handleInputChange}
+          >
+            {labels.map((label) => (
+              <MenuItem key={label} value={label}>
+                {label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            margin="dense"
+            name="technicianId"
+            label="Technician"
+            fullWidth
+            value={formData.technicianId}
+            onChange={handleInputChange}
+          >
+            {technicians.map((technician) => (
+              <MenuItem key={technician.id} value={technician.id}>
+                {technician.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} color="primary">
+            {event ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </LocalizationProvider>
   );
-};
+}
 
 export default EventDialog;
