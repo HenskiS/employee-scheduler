@@ -31,7 +31,7 @@ const MyCalendar = () => {
 
   const fetchEvents = async () => {
     try {
-      const response = await axios.get(`/api/events/range/${selectedDate.toISOString()}/${selectedDate.toISOString()}`);
+      const response = await axios.get(`/api/events/`) //range/${selectedDate.toISOString()}/${selectedDate.toISOString()}`);
       const formattedEvents = response.data.map(event => ({
         id: event.id,
         title: event.title,
@@ -79,16 +79,16 @@ const MyCalendar = () => {
 
   const handleSaveEvent = async (event) => {
     try {
-      const eventData = {
+      const eventData = event/*{
         title: event.title,
         time: moment(event.start).format('HH:mm'),
         technicianId: event.resourceId,
-      };
+      };*/
 
       if (event.id) {
-        await axios.put(`/api/schedules/${event.id}`, eventData);
+        await axios.put(`/api/events/${event.id}`, event);
       } else {
-        await axios.post('/api/schedules', eventData);
+        await axios.post('/api/events', event);
       }
       fetchEvents();
       handleCloseDialog();

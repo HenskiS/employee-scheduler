@@ -44,16 +44,6 @@ function initializeDatabase() {
         FOREIGN KEY (id) REFERENCES people (id)
       )`);
 
-      // Labels table
-      db.run(`CREATE TABLE IF NOT EXISTS labels (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE
-      )`);
-
-      // Insert default labels
-      db.run(`INSERT OR IGNORE INTO labels (name) VALUES 
-        ('None'), ('Available'), ('Canceled'), ('Holiday'), ('Meeting')`);
-
       // Events table
       db.run(`CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,10 +52,9 @@ function initializeDatabase() {
         start_time DATETIME NOT NULL,
         end_time DATETIME NOT NULL,
         is_all_day BOOLEAN NOT NULL DEFAULT 0,
-        label_id INTEGER,
+        label TEXT,
         created_by INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (label_id) REFERENCES labels (id),
         FOREIGN KEY (created_by) REFERENCES people (id)
       )`);
 
@@ -187,10 +176,10 @@ function addTechnician(technician) {
 function addEvent(event) {
   return new Promise((resolve, reject) => {
     db.run(`INSERT INTO events 
-      (name, description, start_time, end_time, is_all_day, label_id, created_by) 
+      (name, description, start_time, end_time, is_all_day, label, created_by) 
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [event.name, event.description, event.start_time, event.end_time, 
-       event.is_all_day ? 1 : 0, event.label_id, event.created_by],
+       event.is_all_day ? 1 : 0, event.label, event.created_by],
       function(err) {
         if (err) {
           reject(err);

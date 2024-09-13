@@ -9,6 +9,7 @@ const DEFAULT_REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
 export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH_INTERVAL }) => {
     const [doctors, setDoctors] = useState([]);
     const [technicians, setTechnicians] = useState([]);
+    const labels = ['None', 'Available', 'Canceled', 'Holiday', 'Meeting'];
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -51,7 +52,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     }, [fetchData]);
 
     return (
-        <SchedulingContext.Provider value={{ doctors, technicians, events, loading, error, refreshData }}>
+        <SchedulingContext.Provider value={{ labels, doctors, technicians, events, loading, error, refreshData }}>
             {children}
         </SchedulingContext.Provider>
     );

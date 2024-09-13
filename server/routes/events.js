@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/database');
+const { addEvent, db } = require('../db/database');
 
-// Get all events
+// GET all events
 router.get('/', (req, res) => {
-  db.all('SELECT * FROM events', (err, rows) => {
+  db.all(`
+    SELECT e.*, l.name as label_name, p.name as created_by_name 
+    FROM events e
+    LEFT JOIN labels l ON e.label_id = l.id
+    LEFT JOIN people p ON e.created_by = p.id
+  `, (err, rows) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -13,113 +18,74 @@ router.get('/', (req, res) => {
   });
 });
 
-// Get a single event
+// GET a single event
 router.get('/:id', (req, res) => {
-  const { id } = req.params;
-  db.get('SELECT * FROM events WHERE id = ?', [id], (err, row) => {
+  db.get(`
+    SELECT e.*, l.name as label_name, p.name as created_by_name 
+    FROM events e
+    LEFT JOIN labels l ON e.label_id = l.id
+    LEFT JOIN people p ON e.created_by = p.id
+    WHERE e.id = ?
+  `, [req.params.id], (err, row) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
     if (!row) {
-      res.status(404).json({ error: 'event not found' });
+      res.status(404).json({ error: 'Event not found' });
       return;
     }
     res.json(row);
   });
 });
 
-// Create a new event
-router.post('/', (req, res) => {
-  const { employee_id, client_id, start_time, end_time, name, details } = req.body;
-  db.run(
-    'INSERT INTO events (employee_id, client_id, start_time, end_time, name, details) VALUES (?, ?, ?, ?, ?, ?)',
-    [employee_id, client_id, start_time, end_time, name, details],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.status(201).json({ id: this.lastID, employee_id, client_id, start_time, end_time, name, details });
-    }
-  );
+// POST a new event
+router.post('/', async (req, res) => {
+  console.log(req.body)
+  try {
+    const eventId = await addEvent(req.body);
+    res.status(201).json({ id: eventId, ...req.body });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// Update a event
+// PUT (update) an event
 router.put('/:id', (req, res) => {
-  const { id } = req.params;
-  const { employee_id, client_id, start_time, end_time, name, details } = req.body;
+  const { name, description, start_time, end_time, is_all_day, label_id, created_by } = req.body;
   db.run(
-    'UPDATE events SET employee_id = ?, client_id = ?, start_time = ?, end_time = ?, name = ?, details = ? WHERE id = ?',
-    [employee_id, client_id, start_time, end_time, name, details, id],
+    `UPDATE events SET 
+      name = ?, description = ?, start_time = ?, end_time = ?, 
+      is_all_day = ?, label_id = ?, created_by = ?
+    WHERE id = ?`,
+    [name, description, start_time, end_time, is_all_day ? 1 : 0, label_id, created_by, req.params.id],
     function(err) {
       if (err) {
         res.status(500).json({ error: err.message });
         return;
       }
       if (this.changes === 0) {
-        res.status(404).json({ error: 'event not found' });
+        res.status(404).json({ error: 'Event not found' });
         return;
       }
-      res.json({ id, employee_id, client_id, start_time, end_time, name, details });
+      res.json({ message: 'Event updated successfully', id: req.params.id });
     }
   );
 });
 
-// Delete a event
+// DELETE an event
 router.delete('/:id', (req, res) => {
-  const { id } = req.params;
-  db.run('DELETE FROM events WHERE id = ?', [id], function(err) {
+  db.run('DELETE FROM events WHERE id = ?', req.params.id, function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
     if (this.changes === 0) {
-      res.status(404).json({ error: 'event not found' });
+      res.status(404).json({ error: 'Event not found' });
       return;
     }
-    res.json({ message: 'event deleted successfully' });
+    res.json({ message: 'Event deleted successfully', id: req.params.id });
   });
-});
-
-// Get events for a specific employee
-router.get('/employee/:employeeId', (req, res) => {
-  const { employeeId } = req.params;
-  db.all('SELECT * FROM events WHERE employee_id = ?', [employeeId], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
-});
-
-// Get events for a specific client
-router.get('/client/:clientId', (req, res) => {
-  const { clientId } = req.params;
-  db.all('SELECT * FROM events WHERE client_id = ?', [clientId], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
-});
-
-// Get events for a specific date range
-router.get('/range/:startDate/:endDate', (req, res) => {
-  const { startDate, endDate } = req.params;
-  db.all(
-    'SELECT * FROM events WHERE start_time >= ? AND end_time <= ?',
-    [startDate, endDate],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json(rows);
-    }
-  );
 });
 
 module.exports = router;

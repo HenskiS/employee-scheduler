@@ -7,142 +7,155 @@ import {
   TextField,
   Button,
   MenuItem,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import { useScheduling } from './SchedulingContext';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
+  const { technicians, labels } = useScheduling();
+  console.log(technicians)
+
   const [formData, setFormData] = useState({
-    event_id: '',
-    client_id: '',
-    start_time: newEvent?.start ?? '',
-    end_time: newEvent?.end ?? '',
-    event_name: '',
+    name: '',
     description: '',
-    is_all_day: false,
-    technician_name: newEvent?.technician?.name ?? '',
-    label: '', // TEXT CHECK(label IN ('Available', 'Unavailable', 'TOR')),
-    created_by: null,
-    created_at: null, // TEXT DEFAULT (datetime('now')),
-    updated_by: null, // INTEGER,
-    updated_at: null // TEXT DEFAULT (datetime('now')),
+    start_time: moment(),
+    end_time: moment().add(1, 'hour'),
+    isAllDay: false,
+    labelId: '',
+    technicianId: '',
   });
-  const [employees, setEmployees] = useState([]);
-  const { technicians } = useScheduling();
-  const [clients, setClients] = useState([]);
 
   useEffect(() => {
     if (event) {
-      setFormData(event);
+      setFormData({
+        ...event,
+        start_time: moment(event.start),
+        end_time: moment(event.end),
+      });
+    } else if (newEvent) {
+      setFormData({
+        ...formData,
+        start_time: moment(newEvent.start),
+        end_time: moment(newEvent.end),
+      });
     }
-    //loadEmployeesAndClients();
-  }, [event]);
-
-  /*const loadEmployeesAndClients = async () => {
-    try {
-      const [fetchedEmployees, fetchedClients] = await Promise.all([
-        fetchEmployees(),
-        fetchClients(),
-      ]);
-      setEmployees(fetchedEmployees);
-      setClients(fetchedClients);
-    } catch (error) {
-      console.error('Error loading employees and clients:', error);
-    }
-  };*/
+  }, [event, newEvent]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData);
+  const handleDateChange = (name) => (date) => {
+    setFormData({ ...formData, [name]: date });
+  };
+
+  const handleCheckboxChange = (e) => {
+    const { name, checked } = e.target;
+    setFormData({ ...formData, [name]: checked });
+  };
+
+  const handleSubmit = () => {
+    onSave({
+      ...formData,
+      start_time: formData.start_time.toISOString(),
+      end_time: formData.end_time.toISOString(),
+    });
+    onClose();
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{event ? 'Edit Event' : 'Add Event'}</DialogTitle>
-      <form onSubmit={handleSubmit}>
+    <LocalizationProvider dateAdapter={AdapterMoment}>
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{event ? 'Edit Event' : 'New Event'}</DialogTitle>
         <DialogContent>
           <TextField
-            select
-            fullWidth
-            margin="normal"
-            name="employee_id"
-            label="Employee"
-            value={formData.employee_id}
-            onChange={handleInputChange}
-          >
-            {technicians.map((employee) => (
-              <MenuItem key={employee.id} value={employee.id}>
-                {employee.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            fullWidth
-            margin="normal"
-            name="client_id"
-            label="Client"
-            value={formData.client_id}
-            onChange={handleInputChange}
-          >
-            {clients.map((client) => (
-              <MenuItem key={client.id} value={client.id}>
-                {client.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            fullWidth
-            margin="normal"
-            name="start_time"
-            label="Start Time"
-            type="time"
-            value={moment(formData.start_time).format('HH:mm')}
-            onChange={handleInputChange}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            fullWidth
-            margin="normal"
-            name="end_time"
-            label="End Time"
-            type="time"
-            value={moment(formData.end_time).format('HH:mm')}
-            onChange={handleInputChange}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            fullWidth
-            margin="normal"
+            autoFocus
+            margin="dense"
             name="name"
-            label="Event Name"
+            label="Name"
+            type="text"
+            fullWidth
             value={formData.name}
             onChange={handleInputChange}
           />
           <TextField
+            margin="dense"
+            name="description"
+            label="Description"
+            type="text"
             fullWidth
-            margin="normal"
-            name="details"
-            label="Details"
             multiline
             rows={4}
-            value={formData.details}
+            value={formData.description}
             onChange={handleInputChange}
           />
+          <DateTimePicker
+            label="Start"
+            value={formData.start_time}
+            onChange={handleDateChange('start_time')}
+            renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
+          />
+          <DateTimePicker
+            label="End"
+            value={formData.end}
+            onChange={handleDateChange('end_time')}
+            renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formData.isAllDay}
+                onChange={handleCheckboxChange}
+                name="isAllDay"
+              />
+            }
+            label="All Day"
+          />
+          <TextField
+            select
+            margin="dense"
+            name="labelId"
+            label="Label"
+            fullWidth
+            value={formData.labelId}
+            onChange={handleInputChange}
+          >
+            {labels.map((label) => (
+              <MenuItem key={label} value={label}>
+                {label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            margin="dense"
+            name="technicianId"
+            label="Technician"
+            fullWidth
+            value={formData.technicianId}
+            onChange={handleInputChange}
+          >
+            {technicians.map((technician) => (
+              <MenuItem key={technician.id} value={technician.id}>
+                {technician.name}
+              </MenuItem>
+            ))}
+          </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" color="primary">
-            Save
+          <Button onClick={handleSubmit} color="primary">
+            {event ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
-      </form>
-    </Dialog>
+      </Dialog>
+    </LocalizationProvider>
   );
 }
 
