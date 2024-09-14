@@ -54,6 +54,8 @@ tbody tr:hover {
 td:hover {
     background-color: #e0e0e0;
 }
+
+/*
 .calendar-container {
   width: 100%;
   overflow-x: auto;
@@ -94,3 +96,10 @@ td:hover {
   display: flex;
   flex-direction: column;
 };
+*/
+.rbc-day-slot .rbc-events-container {
+  margin-right: 0px !important;
+}
+.rbc-time-slot {
+  min-height: 8px;
+}

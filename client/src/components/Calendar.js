@@ -1,6 +1,3 @@
-// This is my calendar React component.
-// I don't want the calendar component to ever extend beyong the bottom of the page
-// Don't reoutput the whole component, just the code I need to add, and where I need to add it.
 import React, { useState, useEffect } from 'react';
 import axios from '../api/axios';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
@@ -42,8 +39,8 @@ const MyCalendar = ({ view }) => {
       const formattedEvents = response.data.map(event => ({
         id: event.id,
         title: event.title,
-        start: new Date(event.start_time),
-        end: new Date(event.end_time),
+        start: new Date(event.startTime),
+        end: new Date(event.endTime),
         resourceId: event.attendees[0],
       }));
       console.log("events:")
@@ -62,8 +59,13 @@ const MyCalendar = ({ view }) => {
   const findtechnicianById = (technicianId) => {
     return technicians.find(technician => technician.technician_id === technicianId) || null;
   };
+  
+  const findEventById = (eventId) => {
+    return events.find(event => event.id === eventId) || null;
+  };
 
-  const handleSelectEvent = (event) => {
+  const handleSelectEvent = (e) => {
+    const event = findEventById(e.id)
     setSelectedEvent(event);
     setNewEvent(null)
     setIsDialogOpen(true);
@@ -82,7 +84,7 @@ const MyCalendar = ({ view }) => {
         start,
         end: adjEnd,
         resourceId: resourceId,
-        isAllDay: slots.length === 1
+        allDay: slots.length === 1
       };
       setSelectedEvent(null);
       setNewEvent(newEvent);
@@ -97,7 +99,8 @@ const MyCalendar = ({ view }) => {
 
   const handleSaveEvent = async (event) => {
     try {
-      const eventData = {...event, attendees: [event.technicianId]}/*{
+      const user = {id: 1}
+      const eventData = {...event, attendees: [event.technicianId] } /*, user}/*{
         title: event.title,
         time: moment(event.start).format('HH:mm'),
         technicianId: event.resourceId,
@@ -135,15 +138,22 @@ const MyCalendar = ({ view }) => {
         )}
         <Calendar
             localizer={localizer}
-            events={events}
+            events={events.map(event=>({
+              id: event.id,
+              title: event.name,
+              start: new Date(event.startTime),
+              end: new Date(event.endTime),
+              resourceId: view === "jobs" ? event.jobNumber : null,
+              allDay: event.allDay
+            }))}
             startAccessor="start"
             endAccessor="end"
             defaultView="day"
-            views={['day']}
-            step={60}
+            views={['day', 'agenda']}
+            step={30}
             timeslots={1}
-            min={new Date(2023, 0, 1, 6, 0, 0)}
-            max={new Date(2023, 0, 1, 21, 0, 0)}
+            min={new Date(2024, 0, 1, 6, 0, 0)}
+            max={new Date(2024, 0, 1, 21, 0, 0)}
             date={selectedDate}
             onNavigate={(date) => setSelectedDate(date)}
             resources={resources}

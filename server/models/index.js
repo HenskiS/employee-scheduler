@@ -10,7 +10,7 @@ Technician.belongsToMany(Doctor, { through: 'DoctorPreferredTechnicians', as: 'p
 Technician.belongsToMany(Doctor, { through: 'DoctorAvoidTechnicians', as: 'avoidingDoctors' });
 
 // Event-User relationship
-Event.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+// Event.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 
 // Event-Technician relationship
 Event.belongsToMany(Technician, { through: 'EventTechnicians' });

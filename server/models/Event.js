@@ -29,7 +29,7 @@ const Event = sequelize.define('Event', {
   },
   createdBy: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   },
   createdAt: {
     type: DataTypes.DATE,

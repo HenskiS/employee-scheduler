@@ -14,35 +14,37 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
+import axios from '../api/axios'
 import { useScheduling } from './SchedulingContext';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
-  const { technicians, labels, throughThirty } = useScheduling();
+  const { technicians, labels, throughThirty, refreshData } = useScheduling();
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    start_time: moment(),
-    end_time: moment().add(4, 'hour'),
-    isAllDay: false,
-    labelId: '',
-    job: '',
+    startTime: moment(),
+    endTime: moment().add(4, 'hour'),
+    allDay: false,
+    label: '',
+    jobNumber: '',
   });
 
   useEffect(() => {
     if (event) {
       setFormData({
         ...event,
-        start_time: moment(event.start),
-        end_time: moment(event.end),
+        startTime: moment(event.startTime),
+        endTime: moment(event.endTime),
+        label: event.label ?? ""
       });
     } else if (newEvent) {
       setFormData({
         ...formData,
-        start_time: moment(newEvent.start),
-        end_time: moment(newEvent.end),
-        job: newEvent.resourceId,
-        isAllDay: newEvent.isAllDay
+        startTime: moment(newEvent.start),
+        endTime: moment(newEvent.end),
+        jobNumber: newEvent.resourceId,
+        allDay: newEvent.allDay
       });
     }
   }, [event, newEvent]);
@@ -58,16 +60,26 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
 
   const handleCheckboxChange = (e) => {
     const { name, checked } = e.target;
-    setFormData({ ...formData, [name]: checked });
+    setFormData({ ...formData, [name]: checked? true : false });
   };
 
   const handleSubmit = () => {
     onSave({
       ...formData,
-      start_time: formData.start_time.toISOString(),
-      end_time: formData.end_time.toISOString(),
+      startTime: formData.startTime.toISOString(),
+      endTime: formData.endTime.toISOString(),
     });
     onClose();
+  };
+
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`/api/events/${event.id}`);
+      refreshData();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
   };
 
   return (
@@ -92,30 +104,28 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             type="text"
             fullWidth
             multiline
-            rows={4}
+            rows={3}
             value={formData.description}
             onChange={handleInputChange}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0px' }}>
           <DateTimePicker
             label="Start"
-            value={formData.start_time}
-            onChange={handleDateChange('start_time')}
-            //renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
+            value={formData.startTime}
+            onChange={handleDateChange('startTime')}
           />
           <DateTimePicker
             label="End"
-            value={formData.end_time}
-            onChange={handleDateChange('end_time')}
-            //renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
+            value={formData.endTime}
+            onChange={handleDateChange('endTime')}
           />
           </div>
           <FormControlLabel
             control={
               <Checkbox
-                checked={formData.isAllDay}
+                checked={formData.allDay? true:false}
                 onChange={handleCheckboxChange}
-                name="isAllDay"
+                name="allDay"
               />
             }
             label="All Day"
@@ -123,10 +133,10 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
           <TextField
             select
             margin="dense"
-            name="labelId"
+            name="label"
             label="Label"
             fullWidth
-            value={formData.labelId}
+            value={formData.label}
             onChange={handleInputChange}
           >
             {labels.map((label) => (
@@ -141,7 +151,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             name="job"
             label="Job"
             fullWidth
-            value={formData.job}
+            value={formData.jobNumber}
             onChange={handleInputChange}
           >
             {throughThirty.map((num) => (
@@ -152,6 +162,11 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
           </TextField>
         </DialogContent>
         <DialogActions>
+          {event && (
+            <Button onClick={handleDelete} color="error" style={{ marginRight: 'auto' }}>
+              Delete
+            </Button>
+          )}
           <Button onClick={onClose}>Cancel</Button>
           <Button onClick={handleSubmit} color="primary">
             {event ? 'Update' : 'Create'}
@@ -163,3 +178,10 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
 }
 
 export default EventDialog;
+//The error "checkbox changing from uncontrolled to controlled" 
+//typically occurs when the initial value of the checkbox is undefined, 
+//and then it's later set to a boolean value. In this case, the issue is 
+//likely caused by the formData.allDay property being undefined when the
+// component first renders. To fix this, you should ensure that formData.allDay
+// is always initialized with a boolean value, either true or false, in the initial
+// state and when setting the form data based on the event or newEvent props.

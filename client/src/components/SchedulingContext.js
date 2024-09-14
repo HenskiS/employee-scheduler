@@ -4,7 +4,7 @@ import axios from '../api/axios';
 
 const SchedulingContext = createContext();
 
-const DEFAULT_REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
+const DEFAULT_REFRESH_INTERVAL = 30 * 1000 // 30 seconds // 2 * 60 * 1000; // 2 minutes
 
 const throughThirty = [
     "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
