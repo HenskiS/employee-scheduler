@@ -11,16 +11,8 @@ import { useScheduling } from './SchedulingContext';
 
 const localizer = momentLocalizer(moment);
 
-const throughThirty = [
-  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-  "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-  "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"
-];
-
 const MyCalendar = ({ view }) => {
-  const { technicians, events, refreshData } = useScheduling()
-  //const [technicians, settechnicians] = useState([]);
-  //const [events, setEvents] = useState([]);
+  const { technicians, events, refreshData, throughThirty } = useScheduling()
   const [resources, setResources] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -78,15 +70,24 @@ const MyCalendar = ({ view }) => {
   };
 
   const handleSelectSlot = (slotInfo) => {
-    const { start, end, resourceId } = slotInfo;
-    const newEvent = {
-      start,
-      end,
-      technician: findtechnicianById(resourceId),
-    };
-    setSelectedEvent(null);
-    setNewEvent(newEvent);
-    setIsDialogOpen(true);
+    if (view === "jobs") {
+      const { start, end, resourceId, slots } = slotInfo;
+
+      let adjEnd = end
+      if (slots.length === 2) {
+        adjEnd = moment(start).add(4, 'hour');
+      }
+
+      const newEvent = {
+        start,
+        end: adjEnd,
+        resourceId: resourceId,
+        isAllDay: slots.length === 1
+      };
+      setSelectedEvent(null);
+      setNewEvent(newEvent);
+      setIsDialogOpen(true);
+    }
   };
 
   const handleCloseDialog = () => {

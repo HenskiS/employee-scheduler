@@ -6,11 +6,17 @@ const SchedulingContext = createContext();
 
 const DEFAULT_REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
 
+const throughThirty = [
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+    "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+    "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"
+  ];
+
 export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH_INTERVAL }) => {
     const [doctors, setDoctors] = useState([]);
     const [technicians, setTechnicians] = useState([]);
-    const labels = ['None', 'Available', 'Canceled', 'Holiday', 'Meeting'];
     const [events, setEvents] = useState([]);
+    const labels = ['None', 'Available', 'Canceled', 'Holiday', 'Meeting'];
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -19,9 +25,9 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             setLoading(true);
             
             const [doctorsData, techniciansData, eventsData] = await Promise.all([
-                axios.get('/api/doctors').then(res => res.json()),
-                axios.get('/api/technicians').then(res => res.json()),
-                axios.get('/api/events').then(res => res.json())
+                axios.get('/api/doctors'),//.then(res => res.json()),
+                axios.get('/api/technicians'),//.then(res => res.json()),
+                axios.get('/api/events')//.then(res => res.json())
             ]);
             /*const response = await axios.get('/api/technicians');
             setTechnicians(response.data);
@@ -29,9 +35,9 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             const response = await axios.get('/api/events');
             setEvents(response.data);*/
 
-            setDoctors(doctorsData);
-            setTechnicians(techniciansData);
-            setEvents(eventsData);
+            setDoctors(doctorsData.data);
+            setTechnicians(techniciansData.data);
+            setEvents(eventsData.data);
             setError(null);
         } catch (err) {
         setError(err.message);
@@ -54,7 +60,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     }, [fetchData]);
 
     return (
-        <SchedulingContext.Provider value={{ labels, doctors, technicians, events, loading, error, refreshData }}>
+        <SchedulingContext.Provider value={{ labels, doctors, technicians, events, throughThirty, loading, error, refreshData }}>
             {children}
         </SchedulingContext.Provider>
     );

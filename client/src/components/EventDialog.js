@@ -17,17 +17,16 @@ import moment from 'moment';
 import { useScheduling } from './SchedulingContext';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
-  const { technicians, labels } = useScheduling();
-  console.log(technicians)
+  const { technicians, labels, throughThirty } = useScheduling();
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     start_time: moment(),
-    end_time: moment().add(1, 'hour'),
+    end_time: moment().add(4, 'hour'),
     isAllDay: false,
     labelId: '',
-    technicianId: '',
+    job: '',
   });
 
   useEffect(() => {
@@ -42,6 +41,8 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
         ...formData,
         start_time: moment(newEvent.start),
         end_time: moment(newEvent.end),
+        job: newEvent.resourceId,
+        isAllDay: newEvent.isAllDay
       });
     }
   }, [event, newEvent]);
@@ -95,18 +96,20 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             value={formData.description}
             onChange={handleInputChange}
           />
+          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0px' }}>
           <DateTimePicker
             label="Start"
             value={formData.start_time}
             onChange={handleDateChange('start_time')}
-            renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
+            //renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
           />
           <DateTimePicker
             label="End"
-            value={formData.end}
+            value={formData.end_time}
             onChange={handleDateChange('end_time')}
-            renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
+            //renderInput={(props) => <TextField {...props} fullWidth margin="dense" />}
           />
+          </div>
           <FormControlLabel
             control={
               <Checkbox
@@ -135,15 +138,15 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
           <TextField
             select
             margin="dense"
-            name="technicianId"
-            label="Technician"
+            name="job"
+            label="Job"
             fullWidth
-            value={formData.technicianId}
+            value={formData.job}
             onChange={handleInputChange}
           >
-            {technicians.map((technician) => (
-              <MenuItem key={technician.id} value={technician.id}>
-                {technician.name}
+            {throughThirty.map((num) => (
+              <MenuItem key={num} value={num}>
+                {num}
               </MenuItem>
             ))}
           </TextField>
