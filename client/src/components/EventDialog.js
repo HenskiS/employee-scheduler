@@ -26,7 +26,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     startTime: moment(),
     endTime: moment().add(4, 'hour'),
     allDay: false,
-    label: '',
+    label: 'None',
     jobNumber: '',
   });
 
@@ -36,7 +36,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
         ...event,
         startTime: moment(event.startTime),
         endTime: moment(event.endTime),
-        label: event.label ?? ""
+        label: event.label ?? 'None'
       });
     } else if (newEvent) {
       setFormData({
