@@ -8,10 +8,11 @@ const Doctor = sequelize.define('Doctor', {
   },
   address1: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   address2: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING,
+    allowNull: true
   },
   city: {
     type: DataTypes.STRING,
@@ -23,11 +24,11 @@ const Doctor = sequelize.define('Doctor', {
   },
   zip: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   phoneNumber: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   }
 });
 

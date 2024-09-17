@@ -108,3 +108,20 @@ td:hover {
 .rbc-time-slot {
   min-height: 8px;
 }
+
+.dialog-split {
+  display: flex;
+  flex-direction: row;
+}
+
+.left {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.right {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-around;
+}

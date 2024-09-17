@@ -9,6 +9,8 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
+  Chip,
+  Divider
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -18,7 +20,7 @@ import axios from '../api/axios'
 import { useScheduling } from './SchedulingContext';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
-  const { technicians, labels, throughThirty, refreshData } = useScheduling();
+  const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -28,6 +30,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     allDay: false,
     label: 'None',
     jobNumber: '',
+    technicians: []
   });
 
   useEffect(() => {
@@ -51,8 +54,9 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    if (name === "technicians") setFormData({...formData, technicians: technicians.push(value)})
     // console.log(`${name}: ${value}`)
-    setFormData({ ...formData, [name]: value });
+    else setFormData({ ...formData, [name]: value });
   };
 
   const handleDateChange = (name) => (date) => {
@@ -63,6 +67,13 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     const { name, checked } = e.target;
     setFormData({ ...formData, [name]: checked? true : false });
   };
+  
+  const handleTechDelete = (e) => {
+    //const { name, checked } = e.target;
+    console.log("Tech delete...")
+    //setFormData({ ...formData, [name]: checked? true : false });
+  };
+
 
   const handleSubmit = () => {
     onSave({
@@ -82,7 +93,6 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
       console.error('Error deleting event:', error);
     }
   };
-
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -131,36 +141,59 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             }
             label="All Day"
           />
-          <TextField
-            select
-            margin="dense"
-            name="label"
-            label="Label"
-            fullWidth
-            value={formData.label}
-            onChange={handleInputChange}
-          >
-            {labels.map((label) => (
-              <MenuItem key={label} value={label}>
-                {label}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            margin="dense"
-            name="jobNumber"
-            label="Job"
-            fullWidth
-            value={formData.jobNumber}
-            onChange={handleInputChange}
-          >
-            {throughThirty.map((num) => (
-              <MenuItem key={num} value={num}>
-                {num}
-              </MenuItem>
-            ))}
-          </TextField>
+          <div className='dialog-split'>
+            <div className='left'>
+              <TextField
+                select
+                margin="dense"
+                name="label"
+                label="Label"
+                fullWidth
+                value={formData.label}
+                onChange={handleInputChange}
+              >
+                {labels.map((label) => (
+                  <MenuItem key={label} value={label}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                margin="dense"
+                name="jobNumber"
+                label="Job"
+                fullWidth
+                value={formData.jobNumber}
+                onChange={handleInputChange}
+              >
+                {throughThirty.map((num) => (
+                  <MenuItem key={num} value={num}>
+                    {num}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </div>
+            <Divider orientation='vertical' flexItem style={{margin: "0px 10px"}}/>
+            <div className="right">
+              <TextField
+                select
+                margin="dense"
+                name="doctor"
+                label="Doctor"
+                fullWidth
+                value={formData.doctor}
+                onChange={handleInputChange}
+              >
+                {doctors.map((doctor) => (
+                  <MenuItem key={doctor.id} value={doctor}>
+                    {doctor.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              {newEvent? null:<Button variant='outlined'>Technicians</Button>}
+            </div>
+          </div>
         </DialogContent>
         <DialogActions>
           {event && (
@@ -177,12 +210,4 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     </LocalizationProvider>
   );
 }
-
 export default EventDialog;
-//The error "checkbox changing from uncontrolled to controlled" 
-//typically occurs when the initial value of the checkbox is undefined, 
-//and then it's later set to a boolean value. In this case, the issue is 
-//likely caused by the formData.allDay property being undefined when the
-// component first renders. To fix this, you should ensure that formData.allDay
-// is always initialized with a boolean value, either true or false, in the initial
-// state and when setting the form data based on the event or newEvent props.
