@@ -36,7 +36,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             setEvents(response.data);*/
 
             setDoctors(doctorsData.data);
-            setTechnicians(techniciansData.data);
+            setTechnicians(techniciansData.data.sort((a, b) => a.name.localeCompare(b.name)));
             setEvents(eventsData.data);
             setError(null);
         } catch (err) {

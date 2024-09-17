@@ -10,7 +10,7 @@ function App() {
     <Router>
       <CssBaseline />
       <Header />
-      <Container>
+      <Container maxWidth={false}>
         <SchedulingProvider>
         <Routes>
           <Route path="/" element={<Schedule />} />

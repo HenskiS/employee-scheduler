@@ -51,6 +51,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    // console.log(`${name}: ${value}`)
     setFormData({ ...formData, [name]: value });
   };
 
@@ -148,7 +149,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
           <TextField
             select
             margin="dense"
-            name="job"
+            name="jobNumber"
             label="Job"
             fullWidth
             value={formData.jobNumber}
