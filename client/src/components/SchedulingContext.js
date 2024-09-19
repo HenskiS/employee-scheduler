@@ -27,7 +27,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             const [doctorsData, techniciansData, eventsData] = await Promise.all([
                 axios.get('/api/doctors'),//.then(res => res.json()),
                 axios.get('/api/technicians'),//.then(res => res.json()),
-                axios.get('/api/events')//.then(res => res.json())
+                axios.get('/api/events/?start=2024-09-16T14:30:00Z&end=2024-09-25T14:30:00Z')//.then(res => res.json())
             ]);
             /*const response = await axios.get('/api/technicians');
             setTechnicians(response.data);

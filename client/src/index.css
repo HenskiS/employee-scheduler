@@ -125,3 +125,11 @@ td:hover {
   flex-direction: column;
   justify-content: space-around;
 }
+
+.recurring-form {
+  display: flex;
+  flex-direction: column;
+}
+.recurring-form > * {
+  margin: 10px 10px;
+}

@@ -18,6 +18,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
 import axios from '../api/axios'
 import { useScheduling } from './SchedulingContext';
+import RecurringEventForm from './RecurringEventForm';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
@@ -30,6 +31,8 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     allDay: false,
     label: 'None',
     jobNumber: '',
+    isRecurring: false,
+    rule: null,
     technicians: []
   });
 
@@ -141,8 +144,22 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             }
             label="All Day"
           />
-          <div className='dialog-split'>
-            <div className='left'>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formData.isRecurring? true:false}
+                onChange={handleCheckboxChange}
+                name="isRecurring"
+              />
+            }
+            label="Recurring"
+          />
+          {formData.isRecurring && 
+            <RecurringEventForm startDate={formData.startTime} onSave={(rrule)=>setFormData({ ...formData, rule: rrule}) } />}
+          <p>{formData.rule}</p>
+          <p>{formData.until}</p>
+          {/*<div className='dialog-split'>
+            <div className='left'>*/}
               <TextField
                 select
                 margin="dense"
@@ -173,10 +190,10 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
                   </MenuItem>
                 ))}
               </TextField>
-            </div>
+            {/*</div>
             <Divider orientation='vertical' flexItem style={{margin: "0px 10px"}}/>
-            <div className="right">
-              <TextField
+            <div className="right">*/}
+              {/*<TextField
                 select
                 margin="dense"
                 name="doctor"
@@ -185,15 +202,18 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
                 value={formData.doctor}
                 onChange={handleInputChange}
               >
+                <MenuItem value="">
+                    <em>None</em>
+                </MenuItem>
                 {doctors.map((doctor) => (
                   <MenuItem key={doctor.id} value={doctor}>
                     {doctor.name}
                   </MenuItem>
                 ))}
               </TextField>
-              {newEvent? null:<Button variant='outlined'>Technicians</Button>}
-            </div>
-          </div>
+              {newEvent? null:<Button variant='outlined'>Technicians</Button>}*/}
+            {/*</div>
+          </div>*/}
         </DialogContent>
         <DialogActions>
           {event && (
