@@ -88,7 +88,7 @@ router.get('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid date range provided' });
     }
     
-    // Fetch all events and their recurrence rules
+    // Fetch all events in range and their recurrence rules
     const events = await Event.findAll({
       include: [
         { 
@@ -102,15 +102,10 @@ router.get('/', authMiddleware, async (req, res) => {
       ],
       where: {
         [Op.or]: [
-          // Non-recurring events within the range
-          {
-            startTime: { [Op.between]: [startDate, endDate] },
-            '$RecurrenceRule.id$': null
-          },
-          // Recurring events (we'll filter these in memory)
-          {
-            '$RecurrenceRule.id$': { [Op.not]: null }
-          }
+          // Events starting within the range
+          { startTime: { [Op.between]: [startDate, endDate] } },
+          // Recurring events that might have instances in the range
+          { '$RecurrenceRule.id$': { [Op.not]: null } }
         ]
       }
     });
@@ -140,21 +135,21 @@ router.get('/', authMiddleware, async (req, res) => {
           instances = [
             ...instances,
             ...recurringInstances.map(date => {
+              // Skip if this instance is the original event
+              if (date.getTime() === eventStart.getTime()) {
+                return null;
+              }
+
               const instanceStart = new Date(date);
               const instanceEnd = new Date(instanceStart.getTime() + eventDuration);
               
-              // Create a new object with all properties of the original event
-              const recurringInstance = { ...event.toJSON() };
-              
-              // Override only the startTime and endTime
-              recurringInstance.startTime = instanceStart.toISOString();
-              recurringInstance.endTime = instanceEnd.toISOString();
-              
-              // Add an isRecurring flag
-              recurringInstance.isRecurring = true;
-              
-              return recurringInstance;
-            })
+              return {
+                ...event.toJSON(),
+                startTime: instanceStart.toISOString(),
+                endTime: instanceEnd.toISOString(),
+                isRecurring: true
+              };
+            }).filter(Boolean) // Remove null entries
           ];
         } catch (error) {
           console.error(`Error processing recurring event ${event.id}:`, error);
@@ -202,15 +197,26 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
 // Delete an event
 router.delete('/:id', authMiddleware, async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    const event = await Event.findByPk(req.params.id);
+    const event = await Event.findByPk(req.params.id, { transaction: t });
+    
     if (event) {
-      await event.destroy();
+      // Delete associated RecurrenceRules
+      await RecurrenceRule.destroy({
+        where: { EventId: req.params.id },
+        transaction: t
+      });
+      // Delete the event
+      await event.destroy({ transaction: t });
+      await t.commit();
       res.status(204).end();
     } else {
+      await t.rollback();
       res.status(404).json({ error: 'Event not found' });
     }
   } catch (error) {
+    await t.rollback();
     res.status(500).json({ error: error.message });
   }
 });

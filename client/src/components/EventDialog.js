@@ -88,14 +88,17 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   };
 
   const handleDelete = async () => {
-    try {
-      await axios.delete(`/api/events/${event.id}`);
-      refreshData();
-      onClose();
-    } catch (error) {
-      console.error('Error deleting event:', error);
+    if (window.confirm("Deleting a recurring event will delete all future instances of this event. Are you sure?")) {
+      try {
+        await axios.delete(`/api/events/${event.id}`);
+        refreshData();
+        onClose();
+      } catch (error) {
+        console.error('Error deleting event:', error);
+      }
     }
   };
+
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
