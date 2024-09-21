@@ -69,6 +69,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const handleCheckboxChange = (e) => {
     const { name, checked } = e.target;
     setFormData({ ...formData, [name]: checked? true : false });
+    console.log(formData)
   };
   
   const handleTechDelete = (e) => {
@@ -158,7 +159,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             label="Recurring"
           />
           {formData.isRecurring && 
-            <RecurringEventForm startDate={formData.startTime} onSave={(rrule)=>setFormData({ ...formData, rule: rrule}) } />}
+            <RecurringEventForm startDate={formData.startTime} rrule={formData.RecurrenceRule?.rule ?? null} onSave={(rrule)=>setFormData({ ...formData, rule: rrule}) } />}
           <p>{formData.rule}</p>
           <p>{formData.until}</p>
           {/*<div className='dialog-split'>
