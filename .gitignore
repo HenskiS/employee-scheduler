@@ -8,6 +8,10 @@ lerna-debug.log*
 .pnpm-debug.log*
 
 Anthropic prompt.txt
+
+server/database.sqlite
+
+*.sqlite
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
@@ -129,4 +133,3 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-server/database.sqlite

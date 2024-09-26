@@ -55,10 +55,6 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         return () => clearInterval(intervalId);
     }, [fetchData, refreshInterval]);
 
-    useEffect(()=>{
-        console.log(events)
-    }, [events])
-
     const refreshData = useCallback(() => {
         fetchData();
     }, [fetchData]);
