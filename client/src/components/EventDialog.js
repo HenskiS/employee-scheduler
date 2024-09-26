@@ -89,7 +89,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   };
 
   const handleDelete = async () => {
-    if (window.confirm("Deleting a recurring event will delete all future instances of this event. Are you sure?")) {
+    if (!event?.isRecurring || window.confirm("Deleting a recurring event will delete all future instances of this event. Are you sure?")) {
       try {
         await axios.delete(`/api/events/${event.id}`);
         refreshData();

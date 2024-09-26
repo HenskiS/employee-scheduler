@@ -1,6 +1,7 @@
 // SchedulingContext.js
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from '../api/axios';
+import moment from 'moment';
 
 const SchedulingContext = createContext();
 
@@ -16,6 +17,10 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     const [doctors, setDoctors] = useState([]);
     const [technicians, setTechnicians] = useState([]);
     const [events, setEvents] = useState([]);
+    const [dateRange, setDateRange] = useState({
+        start: moment().startOf('day').toISOString(),
+        end: moment().endOf('day').toISOString()
+    });
     const labels = ['None', 'Available', 'Canceled', 'Holiday', 'Meeting'];
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -27,13 +32,8 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             const [doctorsData, techniciansData, eventsData] = await Promise.all([
                 axios.get('/api/doctors'),//.then(res => res.json()),
                 axios.get('/api/technicians'),//.then(res => res.json()),
-                axios.get('/api/events/?start=2024-09-16T14:30:00Z&end=2024-09-25T14:30:00Z')//.then(res => res.json())
+                axios.get(`/api/events/?start=${dateRange.start}&end=${dateRange.end}`)//.then(res => res.json())
             ]);
-            /*const response = await axios.get('/api/technicians');
-            setTechnicians(response.data);
-
-            const response = await axios.get('/api/events');
-            setEvents(response.data);*/
 
             setDoctors(doctorsData.data);
             setTechnicians(techniciansData.data.sort((a, b) => a.name.localeCompare(b.name)));
@@ -44,7 +44,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         } finally {
         setLoading(false);
         }
-    }, []);
+    }, [dateRange]);
 
     useEffect(() => {
         fetchData();
@@ -55,12 +55,33 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         return () => clearInterval(intervalId);
     }, [fetchData, refreshInterval]);
 
+    useEffect(()=>{
+        console.log(events)
+    }, [events])
+
     const refreshData = useCallback(() => {
         fetchData();
     }, [fetchData]);
 
+    const updateDateRange = useCallback((start, end) => {
+        setDateRange({
+          start: moment(start).startOf('day').toISOString(),
+          end: moment(end).endOf('day').toISOString()
+        });
+    }, []);
+
     return (
-        <SchedulingContext.Provider value={{ labels, doctors, technicians, events, throughThirty, loading, error, refreshData }}>
+        <SchedulingContext.Provider value={{ 
+            labels, 
+            doctors, 
+            technicians, 
+            events, 
+            throughThirty, 
+            loading, 
+            error, 
+            refreshData,
+            updateDateRange
+        }}>
             {children}
         </SchedulingContext.Provider>
     );

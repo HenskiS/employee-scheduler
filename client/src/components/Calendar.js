@@ -5,18 +5,22 @@ import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import EventDialog from './EventDialog';
 import { useScheduling } from './SchedulingContext';
+import { Box } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 
 const localizer = momentLocalizer(moment);
 
 const MyCalendar = ({ view }) => {
-  const { technicians, events, refreshData, throughThirty } = useScheduling()
+  const { technicians, events, refreshData, throughThirty, updateDateRange } = useScheduling()
   const [resources, setResources] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [newEvent, setNewEvent] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(()=>{
+  useEffect(() => {
     let r
     if (view === "jobs")
       r = throughThirty.map(num => ({ id: num, title: num}))
@@ -24,37 +28,11 @@ const MyCalendar = ({ view }) => {
     setResources(r)
   }, [view, technicians])
 
-  /*const fetchtechnicians = async () => {
-    try {
-      const response = await axios.get('/api/technicians');
-      settechnicians(response.data);
-    } catch (error) {
-      console.error('Error fetching technicians:', error);
-    }
-  };*/
-
-  /*const fetchEvents = async () => {
-    try {
-      const response = await axios.get(`/api/events/`) //range/${selectedDate.toISOString()}/${selectedDate.toISOString()}`);
-      const formattedEvents = response.data.map(event => ({
-        id: event.id,
-        title: event.title,
-        start: new Date(event.startTime),
-        end: new Date(event.endTime),
-        resourceId: event.attendees[0],
-      }));
-      console.log("events:")
-      console.log(formattedEvents)
-      setEvents(formattedEvents);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    }
-  };
-
   useEffect(() => {
-    //fetchtechnicians();
-    fetchEvents();
-  }, [selectedDate]);*/
+    const start = moment(selectedDate).startOf('day');
+    const end = moment(selectedDate).endOf('day');
+    updateDateRange(start, end);
+  }, [selectedDate, updateDateRange]);
 
   const findtechnicianById = (technicianId) => {
     return technicians.find(technician => technician.technician_id === technicianId) || null;
@@ -100,18 +78,14 @@ const MyCalendar = ({ view }) => {
   const handleSaveEvent = async (event) => {
     try {
       const user = {id: 1}
-      const eventData = {...event, attendees: [event.technicianId] } /*, user}/*{
-        title: event.title,
-        time: moment(event.start).format('HH:mm'),
-        technicianId: event.resourceId,
-      };*/
+      const eventData = {...event, attendees: [event.technicianId] }
 
       if (event.id) {
         await axios.put(`/api/events/${event.id}`, eventData);
       } else {
         await axios.post('/api/events', eventData);
       }
-      refreshData(); //fetchEvents();
+      refreshData();
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving event:', error);
@@ -127,43 +101,53 @@ const MyCalendar = ({ view }) => {
 
   return (
     <div className='cal-container'>
-        {isDialogOpen && (
-            <EventDialog
-                open={isDialogOpen}
-                event={selectedEvent}
-                newEvent={newEvent}
-                onClose={handleCloseDialog} 
-                onSave={handleSaveEvent}
-            />
-        )}
-        <Calendar
-            localizer={localizer}
-            events={events.map(event=>({
-              id: event.id,
-              title: event.name,
-              start: new Date(event.startTime),
-              end: new Date(event.endTime),
-              resourceId: view === "jobs" ? event.jobNumber : null,
-              allDay: event.allDay
-            }))}
-            startAccessor="start"
-            endAccessor="end"
-            defaultView="day"
-            views={['day', 'agenda']}
-            step={30}
-            timeslots={1}
-            min={new Date(2024, 0, 1, 6, 0, 0)}
-            max={new Date(2024, 0, 1, 21, 0, 0)}
-            date={selectedDate}
-            onNavigate={(date) => setSelectedDate(date)}
-            resources={resources}
-            resourceIdAccessor="id"
-            resourceTitleAccessor="title"
-            onSelectEvent={handleSelectEvent}
-            onSelectSlot={handleSelectSlot}
-            selectable={true}
-            style={calendarStyle}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
+        <LocalizationProvider dateAdapter={AdapterMoment}>
+          <DatePicker
+            label="Select Date"
+            value={moment(selectedDate)}
+            onChange={(newDate) => setSelectedDate(newDate.toDate())}
+            sx={{ width: 200 }}
+          />
+        </LocalizationProvider>
+      </Box>
+      {isDialogOpen && (
+        <EventDialog
+          open={isDialogOpen}
+          event={selectedEvent}
+          newEvent={newEvent}
+          onClose={handleCloseDialog} 
+          onSave={handleSaveEvent}
         />
+      )}
+      <Calendar
+        localizer={localizer}
+        events={events.map(event => ({
+          id: event.id,
+          title: event.name,
+          start: new Date(event.startTime),
+          end: new Date(event.endTime),
+          resourceId: view === "jobs" ? event.jobNumber : null,
+          allDay: event.allDay
+        }))}
+        startAccessor="start"
+        endAccessor="end"
+        defaultView="day"
+        views={['day', 'agenda']}
+        step={30}
+        timeslots={1}
+        min={new Date(2024, 0, 1, 6, 0, 0)}
+        max={new Date(2024, 0, 1, 21, 0, 0)}
+        date={selectedDate}
+        onNavigate={(date) => setSelectedDate(date)}
+        resources={resources}
+        resourceIdAccessor="id"
+        resourceTitleAccessor="title"
+        onSelectEvent={handleSelectEvent}
+        onSelectSlot={handleSelectSlot}
+        selectable={true}
+        style={calendarStyle}
+      />
     </div>
   );
 };
