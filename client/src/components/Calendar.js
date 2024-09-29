@@ -136,7 +136,7 @@ const MyCalendar = ({ view }) => {
         views={['day', 'agenda']}
         step={30}
         timeslots={1}
-        min={new Date(2024, 0, 1, 6, 0, 0)}
+        min={new Date(2024, 0, 1, 7, 0, 0)}
         max={new Date(2024, 0, 1, 21, 0, 0)}
         date={selectedDate}
         onNavigate={(date) => setSelectedDate(date)}
