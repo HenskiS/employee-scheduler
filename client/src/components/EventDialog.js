@@ -22,7 +22,7 @@ import RecurringEventForm from './RecurringEventForm';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
-
+  console.log("open!")
   const [formData, setFormData] = useState({
     name: '',
     description: '',

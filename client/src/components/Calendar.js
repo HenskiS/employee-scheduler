@@ -5,14 +5,21 @@ import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import EventDialog from './EventDialog';
 import { useScheduling } from './SchedulingContext';
-import { Box } from '@mui/material';
+import { Tabs, Tab, Box, Button } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import CalendarHeader from './CalendarHeader';
 
 const localizer = momentLocalizer(moment);
 
-const MyCalendar = ({ view }) => {
+const MyCalendar = () => {
+  const [tabValue, setTabValue] = useState(0);
+  const [view, setView] = useState("jobs");
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+    setView(newValue ? "techs":"jobs")
+  };
   const { technicians, events, refreshData, throughThirty, updateDateRange } = useScheduling()
   const [resources, setResources] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -101,16 +108,12 @@ const MyCalendar = ({ view }) => {
 
   return (
     <div className='cal-container'>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-        <LocalizationProvider dateAdapter={AdapterMoment}>
-          <DatePicker
-            label="Select Date"
-            value={moment(selectedDate)}
-            onChange={(newDate) => setSelectedDate(newDate.toDate())}
-            sx={{ width: 200 }}
-          />
-        </LocalizationProvider>
-      </Box>
+      <CalendarHeader 
+        view={view}
+        onViewChange={(newView) => setView(newView)}
+        selectedDate={selectedDate}
+        onDateChange={(newDate) => setSelectedDate(newDate)}
+      />
       {isDialogOpen && (
         <EventDialog
           open={isDialogOpen}
@@ -134,7 +137,7 @@ const MyCalendar = ({ view }) => {
         endAccessor="end"
         defaultView="day"
         views={['day', 'agenda']}
-        step={30}
+        step={60}
         timeslots={1}
         min={new Date(2024, 0, 1, 7, 0, 0)}
         max={new Date(2024, 0, 1, 21, 0, 0)}
@@ -147,6 +150,7 @@ const MyCalendar = ({ view }) => {
         onSelectSlot={handleSelectSlot}
         selectable={true}
         style={calendarStyle}
+        length={1}
       />
     </div>
   );
