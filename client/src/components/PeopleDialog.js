@@ -1,21 +1,8 @@
-import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  Tabs,
-  Tab,
-  TextField,
-  List,
-  ListItem,
-  ListItemText,
-  Button,
-  IconButton,
-  Box,
-  Typography,
-  Divider,
-} from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogTitle, DialogContent, Tabs, Tab, TextField, 
+  List, ListItem, ListItemText, Button, IconButton, Box, Typography, Divider } from '@mui/material';
 import { Search, Close, Save, Edit } from '@mui/icons-material';
+import axios from '../api/axios';
 
 const PeopleDialog = ({ open, onClose }) => {
   const [tab, setTab] = useState(0);
@@ -23,23 +10,29 @@ const PeopleDialog = ({ open, onClose }) => {
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [editMode, setEditMode] = useState(false);
 
+  const [doctors, setDoctors] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
+  const [users, setUsers] = useState([]);
   const tabs = ['DOCTORS', 'TECHNICIANS', 'USERS'];
 
-  // Mock data - replace with your actual data
-  const people = {
-    DOCTORS: [
-      { id: 1, name: 'Dr. Smith', speciality: 'Cardiology', phone: '123-456-7890', email: 'smith@example.com', address: '123 Main St', license: 'MD12345', yearsOfExperience: 10 },
-      { id: 2, name: 'Dr. Johnson', speciality: 'Neurology', phone: '098-765-4321', email: 'johnson@example.com', address: '456 Oak Ave', license: 'MD67890', yearsOfExperience: 15 },
-    ],
-    TECHNICIANS: [
-      { id: 3, name: 'Tech Brown', skill: 'X-ray', phone: '111-222-3333', email: 'brown@example.com', certifications: ['X-ray Tech', 'MRI Tech'], yearsOfExperience: 5 },
-      { id: 4, name: 'Tech Davis', skill: 'MRI', phone: '444-555-6666', email: 'davis@example.com', certifications: ['MRI Tech', 'CT Tech'], yearsOfExperience: 8 },
-    ],
-    USERS: [
-      { id: 5, name: 'John Doe', email: 'john@example.com', phone: '777-888-9999', role: 'Admin', department: 'IT', hireDate: '2020-01-15' },
-      { id: 6, name: 'Jane Smith', email: 'jane@example.com', phone: '000-111-2222', role: 'Manager', department: 'HR', hireDate: '2018-05-20' },
-    ],
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const doctorsResponse = await axios.get('/api/doctors');
+        setDoctors(doctorsResponse.data);
+
+        const techniciansResponse = await axios.get('/api/technicians');
+        setTechnicians(techniciansResponse.data);
+
+        const usersResponse = await axios.get('/api/users');
+        setUsers(usersResponse.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleTabChange = (event, newValue) => {
     setTab(newValue);
@@ -56,17 +49,45 @@ const PeopleDialog = ({ open, onClose }) => {
     setEditMode(false);
   };
 
-  const handleSave = () => {
-    // Implement save logic here
+  const handleSave = async () => {
     console.log('Saving:', selectedPerson);
     setEditMode(false);
+  
+    try {
+      let endpoint;
+      if (tab === 0) {
+        endpoint = `/api/doctors/${selectedPerson.id}`;
+        await axios.put(endpoint, selectedPerson);
+        setDoctors(doctors.map(doc => doc.id === selectedPerson.id ? selectedPerson : doc));
+      } else if (tab === 1) {
+        endpoint = `/api/technicians/${selectedPerson.id}`;
+        await axios.put(endpoint, selectedPerson);
+        setTechnicians(technicians.map(tech => tech.id === selectedPerson.id ? selectedPerson : tech));
+      } else if (tab === 2) {
+        endpoint = `/api/users/${selectedPerson.id}`;
+        await axios.put(endpoint, selectedPerson);
+        setUsers(users.map(user => user.id === selectedPerson.id ? selectedPerson : user));
+      }
+      console.log('Successfully updated person');
+    } catch (error) {
+      console.error('Error updating person:', error);
+    }
   };
 
   const handleEdit = () => {
     setEditMode(true);
   };
 
-  const filteredPeople = people[tabs[tab]].filter((person) =>
+  const getCurrentPeople = () => {
+    switch(tab) {
+      case 0: return doctors;
+      case 1: return technicians;
+      case 2: return users;
+      default: return [];
+    }
+  };
+
+  const filteredPeople = getCurrentPeople().filter((person) =>
     person.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
