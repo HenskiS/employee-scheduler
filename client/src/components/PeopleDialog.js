@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, Tabs, Tab, TextField, 
   List, ListItem, ListItemText, Button, IconButton, Box, Typography, Divider } from '@mui/material';
-import { Search, Close, Save, Edit } from '@mui/icons-material';
+import { Search, Close, Save, Edit, Add } from '@mui/icons-material';
 import axios from '../api/axios';
 
 const PeopleDialog = ({ open, onClose }) => {
@@ -9,6 +9,7 @@ const PeopleDialog = ({ open, onClose }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   const [doctors, setDoctors] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -38,6 +39,7 @@ const PeopleDialog = ({ open, onClose }) => {
     setTab(newValue);
     setSelectedPerson(null);
     setEditMode(false);
+    setIsAdding(false);
   };
 
   const handleSearch = (event) => {
@@ -47,6 +49,7 @@ const PeopleDialog = ({ open, onClose }) => {
   const handlePersonSelect = (person) => {
     setSelectedPerson(person);
     setEditMode(false);
+    setIsAdding(false);
   };
 
   const handleSave = async () => {
@@ -55,27 +58,51 @@ const PeopleDialog = ({ open, onClose }) => {
   
     try {
       let endpoint;
-      if (tab === 0) {
-        endpoint = `/api/doctors/${selectedPerson.id}`;
-        await axios.put(endpoint, selectedPerson);
-        setDoctors(doctors.map(doc => doc.id === selectedPerson.id ? selectedPerson : doc));
-      } else if (tab === 1) {
-        endpoint = `/api/technicians/${selectedPerson.id}`;
-        await axios.put(endpoint, selectedPerson);
-        setTechnicians(technicians.map(tech => tech.id === selectedPerson.id ? selectedPerson : tech));
-      } else if (tab === 2) {
-        endpoint = `/api/users/${selectedPerson.id}`;
-        await axios.put(endpoint, selectedPerson);
-        setUsers(users.map(user => user.id === selectedPerson.id ? selectedPerson : user));
+      if (isAdding) {
+        if (tab === 0) {
+          endpoint = '/api/doctors';
+          const response = await axios.post(endpoint, selectedPerson);
+          setDoctors([...doctors, response.data]);
+        } else if (tab === 1) {
+          endpoint = '/api/technicians';
+          const response = await axios.post(endpoint, selectedPerson);
+          setTechnicians([...technicians, response.data]);
+        } else if (tab === 2) {
+          endpoint = '/api/users';
+          const response = await axios.post(endpoint, selectedPerson);
+          setUsers([...users, response.data]);
+        }
+        console.log('Successfully added new person');
+      } else {
+        if (tab === 0) {
+          endpoint = `/api/doctors/${selectedPerson.id}`;
+          await axios.put(endpoint, selectedPerson);
+          setDoctors(doctors.map(doc => doc.id === selectedPerson.id ? selectedPerson : doc));
+        } else if (tab === 1) {
+          endpoint = `/api/technicians/${selectedPerson.id}`;
+          await axios.put(endpoint, selectedPerson);
+          setTechnicians(technicians.map(tech => tech.id === selectedPerson.id ? selectedPerson : tech));
+        } else if (tab === 2) {
+          endpoint = `/api/users/${selectedPerson.id}`;
+          await axios.put(endpoint, selectedPerson);
+          setUsers(users.map(user => user.id === selectedPerson.id ? selectedPerson : user));
+        }
+        console.log('Successfully updated person');
       }
-      console.log('Successfully updated person');
+      setIsAdding(false);
     } catch (error) {
-      console.error('Error updating person:', error);
+      console.error('Error saving person:', error);
     }
   };
 
   const handleEdit = () => {
     setEditMode(true);
+  };
+
+  const handleAdd = () => {
+    setSelectedPerson({});
+    setEditMode(true);
+    setIsAdding(true);
   };
 
   const getCurrentPeople = () => {
@@ -88,20 +115,20 @@ const PeopleDialog = ({ open, onClose }) => {
   };
 
   const filteredPeople = getCurrentPeople().filter((person) =>
-    person.name.toLowerCase().includes(searchTerm.toLowerCase())
+    person.name && person.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const renderPersonDetails = () => {
     if (!selectedPerson) return null;
 
-    const fields = Object.entries(selectedPerson).filter(([key]) => key !== 'id');
+    const fields = isAdding ? ['name', 'email', 'phone'] : Object.keys(selectedPerson).filter(key => key !== 'id');
 
-    return fields.map(([key, value]) => (
+    return fields.map((key) => (
       <TextField
         key={key}
         fullWidth
         label={key.charAt(0).toUpperCase() + key.slice(1)}
-        value={value}
+        value={selectedPerson[key] || ''}
         onChange={(e) => setSelectedPerson({ ...selectedPerson, [key]: e.target.value })}
         InputProps={{
           readOnly: !editMode,
@@ -184,17 +211,25 @@ const PeopleDialog = ({ open, onClose }) => {
                 </ListItem>
               ))}
             </List>
+            <Button 
+              variant="contained" 
+              startIcon={<Add />} 
+              onClick={handleAdd}
+              sx={{ mt: 2, mb: 2 }}
+            >
+              Add New
+            </Button>
           </Box>
           <Box sx={{ width: '40%', pl: 2, pr: 2, overflowY: 'auto' }}>
-            {selectedPerson ? (
+            {selectedPerson || isAdding ? (
               <>
                 <Typography variant="h6" sx={{ mb: 2, mt: 2 }}>
-                  {selectedPerson.name}
+                  {isAdding ? 'Add New Person' : selectedPerson.name}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 {renderPersonDetails()}
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, mb: 2 }}>
-                  {editMode ? (
+                  {editMode || isAdding ? (
                     <Button variant="contained" onClick={handleSave} startIcon={<Save />}>
                       SAVE
                     </Button>
@@ -207,7 +242,7 @@ const PeopleDialog = ({ open, onClose }) => {
               </>
             ) : (
               <Typography variant="body1" sx={{ mt: 2 }}>
-                Select a person to view details
+                Select a person to view details or add a new one
               </Typography>
             )}
           </Box>
