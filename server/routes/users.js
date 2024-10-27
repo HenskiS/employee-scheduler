@@ -69,7 +69,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
         req.body.password = await hashPassword(req.body.password);
       }
       await user.update(req.body);
-      res.json({ message: 'User updated successfully' });
+      const updatedUser = await User.findByPk(req.params.id, {
+        attributes: { exclude: ['password'] }
+      });
+      res.json(updatedUser);
     } else {
       res.status(404).json({ error: 'User not found' });
     }

@@ -8,7 +8,7 @@ const Technician = sequelize.define('Technician', {
   },
   phoneNumber: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   email: {
     type: DataTypes.STRING,
@@ -17,7 +17,7 @@ const Technician = sequelize.define('Technician', {
   },
   experienceLevel: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   }
 });
 
