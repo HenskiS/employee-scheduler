@@ -92,6 +92,14 @@ const PeopleDialog = ({ open, onClose }) => {
     }
   };
 
+  const handleDelete = async (id) => {
+    const newData = await fetchPeople();
+    setPeople(newData);
+    setSelectedPerson(null);
+    setIsAdding(false);
+    setEditMode(false);
+  }
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -111,6 +119,7 @@ const PeopleDialog = ({ open, onClose }) => {
             onPersonSelect={person => {
               //console.log('Selecting person:', person);
               setSelectedPerson(person);
+              setEditMode(false);
             }}
             onAddNew={() => {
               setSelectedPerson(null);
@@ -125,6 +134,7 @@ const PeopleDialog = ({ open, onClose }) => {
             personType={tab}
             onEdit={() => setEditMode(true)}
             onSave={handleSave}
+            onDelete={handleDelete}
           />
         </Box>
       </DialogContent>

@@ -1,4 +1,3 @@
-// components/PersonDetails.js
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -10,7 +9,7 @@ import {
   Snackbar,
   CircularProgress
 } from '@mui/material';
-import { Save, Edit } from '@mui/icons-material';
+import { Save, Edit, Delete } from '@mui/icons-material';
 import axios from '../api/axios';
 
 const FIELD_CONFIGS = {
@@ -33,7 +32,9 @@ const FIELD_CONFIGS = {
   2: [ // Users
     { key: 'name', label: 'Name', required: true },
     { key: 'email', label: 'Email', required: true },
-    { key: 'username', label: 'Username', required: true }
+    { key: 'username', label: 'Username', required: true },
+    { key: 'password', label: 'Password', type: 'password' },
+    { key: 'confirmPassword', label: 'Confirm Password', type: 'password' }
   ]
 };
 
@@ -45,7 +46,8 @@ const PersonDetails = ({
   editMode,
   personType,
   onEdit,
-  onSave
+  onSave,
+  onDelete
 }) => {
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -69,6 +71,12 @@ const PersonDetails = ({
       }
     });
 
+    if (personType === 2) {
+      if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match';
+      }
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -84,12 +92,21 @@ const PersonDetails = ({
     
     try {
       const personTypeEndpoint = PERSON_TYPES[personType];
+      let dataToSend = { ...formData };
+
+      if (personType === 2) {
+        if (formData.password) {
+          dataToSend.password = formData.password;
+        }
+        delete dataToSend.confirmPassword;
+      }
+
       let response;
 
       if (isAdding) {
-        response = await axios.post(`/api/${personTypeEndpoint}`, formData);
+        response = await axios.post(`/api/${personTypeEndpoint}`, dataToSend);
       } else {
-        response = await axios.put(`/api/${personTypeEndpoint}/${formData.id}`, formData);
+        response = await axios.put(`/api/${personTypeEndpoint}/${dataToSend.id}`, dataToSend);
       }
 
       setSuccessMessage(`Successfully ${isAdding ? 'added' : 'updated'} ${formData.name}`);
@@ -104,10 +121,28 @@ const PersonDetails = ({
     }
   };
 
+  const handleDelete = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const personTypeEndpoint = PERSON_TYPES[personType];
+      await axios.delete(`/api/${personTypeEndpoint}/${formData.id}`);
+      setSuccessMessage(`Successfully deleted ${formData.name}`);
+      onDelete(formData.id);
+    } catch (err) {
+      setError(
+        err.response?.data?.message || 
+        'An error occurred while deleting. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFieldChange = (key, value) => {
     setFormData(prev => ({ ...prev, [key]: value }));
     
-    // Clear validation error when field is modified
     if (validationErrors[key]) {
       setValidationErrors(prev => ({ ...prev, [key]: null }));
     }
@@ -138,7 +173,7 @@ const PersonDetails = ({
         </Alert>
       )}
       
-      {fields.map(({ key, label, required }) => (
+      {fields.map(({ key, label, required, type }) => (
         <TextField
           key={key}
           fullWidth
@@ -151,6 +186,7 @@ const PersonDetails = ({
           required={required}
           error={!!validationErrors[key]}
           helperText={validationErrors[key]}
+          type={type || 'text'}
           sx={{
             mb: 2,
             '& .MuiInputBase-input.Mui-readOnly': {
@@ -160,7 +196,18 @@ const PersonDetails = ({
         />
       ))}
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, mb: 2 }}>
+        {!isAdding && (
+          <Button 
+            variant="outlined" 
+            color="error" 
+            onClick={handleDelete} 
+            startIcon={<Delete />}
+            disabled={loading}
+          >
+            DELETE
+          </Button>
+        )}
         {editMode || isAdding ? (
           <Button 
             variant="contained" 

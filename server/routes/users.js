@@ -6,12 +6,14 @@ const { hashPassword, comparePassword } = require('../utils/passwordUtils');
 const jwt = require('jsonwebtoken');
 
 // Register a new user
-router.post('/register', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { name, email, username, password } = req.body;
     const hashedPassword = await hashPassword(password);
     const user = await User.create({ name, email, username, password: hashedPassword });
-    res.status(201).json({ message: 'User registered successfully' });
+    const userObject = user.toJSON();
+    const { password: _, ...userWithoutPassword } = userObject;
+    res.status(201).json(userWithoutPassword);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
