@@ -139,8 +139,13 @@ router.get('/', authMiddleware, async (req, res) => {
               if (date.getTime() === eventStart.getTime()) {
                 return null;
               }
-
+              // set start time to event start time
               const instanceStart = new Date(date);
+              instanceStart.setHours(eventStart.getHours());
+              instanceStart.setMinutes(eventStart.getMinutes());
+              instanceStart.setSeconds(eventStart.getSeconds());
+              instanceStart.setMilliseconds(eventStart.getMilliseconds());
+              
               const instanceEnd = new Date(instanceStart.getTime() + eventDuration);
               
               return {

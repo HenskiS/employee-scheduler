@@ -42,7 +42,7 @@ const MyCalendar = () => {
     const start = moment(selectedDate).startOf('day');
     const end = moment(selectedDate).endOf('day');
     updateDateRange(start, end);
-  }, [selectedDate, updateDateRange]);
+  }, [selectedDate]);
 
   const findtechnicianById = (technicianId) => {
     return technicians.find(technician => technician.technician_id === technicianId) || null;

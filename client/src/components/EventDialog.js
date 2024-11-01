@@ -89,13 +89,15 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   };
 
   const handleDelete = async () => {
-    if (!event?.isRecurring || window.confirm("Deleting a recurring event will delete all future instances of this event. Are you sure?")) {
-      try {
-        await axios.delete(`/api/events/${event.id}`);
-        refreshData();
-        onClose();
-      } catch (error) {
-        console.error('Error deleting event:', error);
+    if (window.confirm("Are you sure you wish to delete this event?")) {
+      if (!event?.isRecurring || window.confirm("Deleting a recurring event will delete all future instances of this event. Are you sure?")) {
+        try {
+          await axios.delete(`/api/events/${event.id}`);
+          refreshData();
+          onClose();
+        } catch (error) {
+          console.error('Error deleting event:', error);
+        }
       }
     }
   };
@@ -171,11 +173,19 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
                 value={formData.label}
                 onChange={handleInputChange}
               >
-                {labels.map((label) => (
-                  <MenuItem key={label} value={label.value} style={{ backgroundColor: `${label.color}`}}>
-                    {label.label}
-                  </MenuItem>
-                ))}
+              {labels.map((label) => (
+                <MenuItem key={label.value} value={label.value}>
+                  <div style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    borderRadius: '50%', 
+                    backgroundColor: label.color,
+                    marginRight: '8px',
+                    display: 'inline-block'
+                  }} />
+                  {label.label}
+                </MenuItem>
+              ))}
               </TextField>
               <TextField
                 select
