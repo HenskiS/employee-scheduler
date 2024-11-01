@@ -3,6 +3,7 @@ import axios from '../api/axios';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import '../CalendarStyles.css';
 import EventDialog from './EventDialog';
 import { useScheduling } from './SchedulingContext';
 import { Tabs, Tab, Box, Button } from '@mui/material';
@@ -26,6 +27,8 @@ const MyCalendar = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [newEvent, setNewEvent] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const { colorMap } = useScheduling();
 
   useEffect(() => {
     let r
@@ -105,6 +108,39 @@ const MyCalendar = () => {
     overflowX: 'auto',
     overflowY: 'auto'
   };
+  const EventComponent = ({ event }) => {
+    const backgroundColor = colorMap[event.label] || '#6b7280'; // default
+    
+    const style = {
+      backgroundColor,
+      color: 'black',
+      padding: '4px 8px',
+      borderRadius: '4px',
+      overflow: 'hidden',
+      fontSize: '14px',
+      height: '100%',
+      position: 'relative'
+    };
+  
+    const timeStyle = {
+      fontSize: '12px',
+      marginBottom: '4px'
+    };
+  
+    const titleStyle = {
+      fontWeight: 'bold'
+    };
+  
+    const startTime = moment(event.start).format('h:mm A');
+    const endTime = moment(event.end).format('h:mm A');
+    
+    return (
+      <div style={style}>
+        <div style={timeStyle}>{`${startTime} – ${endTime}`}</div>
+        <div style={titleStyle}>{event.title}</div>
+      </div>
+    );
+  };
 
   return (
     <div className='cal-container'>
@@ -131,8 +167,12 @@ const MyCalendar = () => {
           start: new Date(event.startTime),
           end: new Date(event.endTime),
           resourceId: view === "jobs" ? event.jobNumber : null,
-          allDay: event.allDay
+          allDay: event.allDay,
+          label: event.label
         }))}
+        components={{
+          event: EventComponent
+        }}
         startAccessor="start"
         endAccessor="end"
         defaultView="day"

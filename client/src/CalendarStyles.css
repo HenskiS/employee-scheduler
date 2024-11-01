@@ -1,0 +1,25 @@
+/* CalendarStyles.css */
+.rbc-event {
+    background: none !important;
+    border: none !important;
+    outline: none !important;
+    padding: 0 !important;
+}
+
+.rbc-event-content {
+    height: 100%;
+    width: 100%;
+}
+
+.rbc-selected {
+    background: none !important;
+}
+
+.rbc-event.rbc-selected {
+    background: none !important;
+    outline: none !important;
+}
+
+.rbc-event-label {
+    display: none;
+}

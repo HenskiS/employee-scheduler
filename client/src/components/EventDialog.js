@@ -29,7 +29,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     startTime: moment(),
     endTime: moment().add(4, 'hour'),
     allDay: false,
-    label: 'None',
+    label: 'none',
     jobNumber: '',
     isRecurring: false,
     rule: null,
@@ -160,8 +160,6 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
           />
           {formData.isRecurring && 
             <RecurringEventForm startDate={formData.startTime} rrule={formData.RecurrenceRule?.rule ?? null} onSave={(rrule)=>setFormData({ ...formData, rule: rrule}) } />}
-          <p>{formData.rule}</p>
-          <p>{formData.until}</p>
           {/*<div className='dialog-split'>
             <div className='left'>*/}
               <TextField
@@ -174,8 +172,8 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
                 onChange={handleInputChange}
               >
                 {labels.map((label) => (
-                  <MenuItem key={label} value={label}>
-                    {label}
+                  <MenuItem key={label} value={label.value} style={{ backgroundColor: `${label.color}`}}>
+                    {label.label}
                   </MenuItem>
                 ))}
               </TextField>

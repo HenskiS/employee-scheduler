@@ -21,7 +21,38 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         start: moment().startOf('day').toISOString(),
         end: moment().endOf('day').toISOString()
     });
-    const labels = ['None', 'Available', 'Canceled', 'Holiday', 'Meeting'];
+    const labels = [
+        { label: 'None', value: 'none', color: 'rgba(145,180,232,255)' },
+        { label: 'Available', value: 'available', color: 'rgba(255,149,0,255)' },
+        { label: 'Cancelled', value: 'cancelled', color: 'rgba(195,0,209,255)' },
+        { label: 'Cancelled WITHOUT 24-hour notice', value: 'cancelled-no-notice', color: 'rgba(125,0,171,255)' },
+        { label: 'Holiday', value: 'holiday', color: 'rgba(64,237,205,255)' },
+        { label: 'Inactive', value: 'inactive', color: 'rgba(0,115,13,255)' },
+        { label: 'Managers', value: 'managers', color: 'rgba(74,74,247,255)' },
+        { label: 'Meeting', value: 'meeting', color: 'rgba(239,78,125,255)' },
+        { label: 'Not Available', value: 'unavailable', color: 'rgba(163,240,169,255)' },
+        { label: 'Prospect', value: 'prospect', color: 'rgba(0,255,217,255)' },
+        { label: 'Scheduled Day Of', value: 'same-day', color: 'rgba(242,63,63,255)' },
+        { label: 'T.O.R.', value: 'tor', color: 'rgba(0,199,0,255)' },
+        { label: 'Trainee', value: 'trainee', color: 'rgba(247,241,54,255)' },
+        { label: 'Waitlist', value: 'waitlist', color: 'rgba(194,0,0,255)' }
+    ];
+    const colorMap = {
+        none: 'rgba(145,180,232,255)',
+        available: 'rgba(255,149,0,255)',
+        cancelled: 'rgba(195,0,209,255)',
+        'cancelled-no-notice': 'rgba(125,0,171,255)',
+        holiday: 'rgba(64,237,205,255)',
+        inactive: 'rgba(0,115,13,255)',
+        managers: 'rgba(74,74,247,255)',
+        meeting: 'rgba(239,78,125,255)',
+        unavailable: 'rgba(163,240,169,255)',
+        prospect: 'rgba(0,255,217,255)',
+        'same-day': 'rgba(242,63,63,255)',
+        tor: 'rgba(0,199,0,255)',
+        trainee: 'rgba(247,241,54,255)',
+        waitlist: 'rgba(194,0,0,255)'
+    };
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -69,7 +100,8 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
 
     return (
         <SchedulingContext.Provider value={{ 
-            labels, 
+            labels,
+            colorMap,
             doctors, 
             technicians, 
             events, 
