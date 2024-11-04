@@ -1,3 +1,4 @@
+// models/index.js
 const Doctor = require('./Doctor');
 const Technician = require('./Technician');
 const User = require('./User');
@@ -20,6 +21,10 @@ Technician.belongsToMany(Event, { through: 'EventTechnicians' });
 // Event-RecurrenceRule relationship
 Event.hasOne(RecurrenceRule)
 RecurrenceRule.belongsTo(Event);
+
+// Event-Doctor relationship
+Event.belongsTo(Doctor);
+Doctor.hasMany(Event);
 
 module.exports = {
   Doctor,

@@ -17,10 +17,10 @@ const FIELD_CONFIGS = {
     { key: 'name', label: 'Name', required: true },
     { key: 'email', label: 'Email' },
     { key: 'phoneNumber', label: 'Phone' },
-    { key: 'address1', label: 'Address1', required: true },
+    { key: 'address1', label: 'Address1' },
     { key: 'address2', label: 'Address2' },
-    { key: 'city', label: 'City', required: true },
-    { key: 'state', label: 'State', required: true },
+    { key: 'city', label: 'City' },
+    { key: 'state', label: 'State' },
     { key: 'zip', label: 'Zip' }
   ],
   1: [ // Technicians

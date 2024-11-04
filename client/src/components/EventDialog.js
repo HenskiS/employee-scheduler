@@ -10,7 +10,8 @@ import {
   FormControlLabel,
   Checkbox,
   Chip,
-  Divider
+  Divider,
+  Autocomplete
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -22,7 +23,7 @@ import RecurringEventForm from './RecurringEventForm';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
-  console.log("open!")
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -33,7 +34,8 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     jobNumber: '',
     isRecurring: false,
     rule: null,
-    technicians: []
+    technicians: [],
+    DoctorId: null
   });
 
   useEffect(() => {
@@ -56,7 +58,9 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   }, [event, newEvent]);
 
   const handleInputChange = (e) => {
+    console.log(e)
     const { name, value } = e.target;
+    console.log(`name: ${name}, value: ${value}`)
     if (name === "technicians") setFormData({...formData, technicians: technicians.push(value)})
     // console.log(`${name}: ${value}`)
     else setFormData({ ...formData, [name]: value });
@@ -101,6 +105,10 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
       }
     }
   };
+
+  useEffect(()=>{
+    console.log(formData)
+  }, [formData])
 
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
@@ -202,28 +210,22 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
                   </MenuItem>
                 ))}
               </TextField>
-            {/*</div>
-            <Divider orientation='vertical' flexItem style={{margin: "0px 10px"}}/>
-            <div className="right">*/}
-              {/*<TextField
-                select
-                margin="dense"
+              
+              <Autocomplete 
                 name="doctor"
                 label="Doctor"
-                fullWidth
-                value={formData.doctor}
-                onChange={handleInputChange}
-              >
-                <MenuItem value="">
-                    <em>None</em>
-                </MenuItem>
-                {doctors.map((doctor) => (
-                  <MenuItem key={doctor.id} value={doctor}>
-                    {doctor.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-              {newEvent? null:<Button variant='outlined'>Technicians</Button>}*/}
+                options={doctors}
+                getOptionLabel={option => option.name}
+                value={formData.DoctorId? doctors.filter(doc=>doc.id===formData.DoctorId)[0] : null}
+                onChange={(event, newValue) => {
+                  handleInputChange({
+                    target: { name: 'DoctorId', value: newValue ? newValue.id : null }
+                  });
+                }}
+                sx={{marginTop: "8px"}}
+                renderInput={(params) => <TextField {...params} label="Doctor" />}
+              />
+              {/*newEvent? null:<Button variant='outlined'>Technicians</Button>*/}
             {/*</div>
           </div>*/}
         </DialogContent>

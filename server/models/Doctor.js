@@ -16,11 +16,11 @@ const Doctor = sequelize.define('Doctor', {
   },
   city: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   state: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   zip: {
     type: DataTypes.STRING,

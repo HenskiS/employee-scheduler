@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const sequelize = require('../config/database')
 const { Op } = require('sequelize')
-const {Event, RecurrenceRule, Technician} = require('../models/index');
+const {Event, RecurrenceRule, Technician, Doctor} = require('../models/index');
 const authMiddleware = require('../middleware/auth');
 const RRule = require('rrule').RRule;
 
@@ -56,7 +56,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // Fetch the created event with associated technicians
     const createdEvent = await Event.findByPk(result.id, {
-      include: [{ model: Technician, through: { attributes: [] } }]
+      include: [{ model: Technician, through: { attributes: [] } }, { model: Doctor }]
     });
 
     res.status(201).json(createdEvent);
@@ -98,7 +98,8 @@ router.get('/', authMiddleware, async (req, res) => {
         {
           model: RecurrenceRule,
           required: false
-        }
+        },
+        { model: Doctor}
       ],
       where: {
         [Op.or]: [
@@ -174,7 +175,12 @@ router.get('/', authMiddleware, async (req, res) => {
 // Get a specific event
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const event = await Event.findByPk(req.params.id, { include: [{ model: Technician, through: { attributes: [] } }] });
+    const event = await Event.findByPk(req.params.id, {
+      include: [
+        { model: Technician, through: { attributes: [] } },
+        { model: Doctor }
+      ]
+    });
     if (event) {
       res.json(event);
     } else {
@@ -185,13 +191,26 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// If need be, modify this event endpoint given that each Event.belongsTo(Doctor), and the doctor assigned to the event might be changed
 // Update an event
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const event = await Event.findByPk(req.params.id);
     if (event) {
+      // Check if the doctor is being changed
+      if (req.body.DoctorId && req.body.DoctorId !== event.DoctorId) {
+        // Verify that the new doctor exists
+        const newDoctor = await Doctor.findByPk(req.body.DoctorId);
+        if (!newDoctor) {
+          return res.status(404).json({ error: 'New doctor not found' });
+        }
+      }
+      
       await event.update(req.body);
-      res.json(event);
+      await event.reload({include: [{ model: Doctor, attributes: ['id', 'name'] }]})
+      
+      res.json(event)
+      
     } else {
       res.status(404).json({ error: 'Event not found' });
     }
