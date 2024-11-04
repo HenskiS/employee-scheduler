@@ -196,7 +196,7 @@ const PersonDetails = ({
         />
       ))}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: isAdding ? 'flex-end' : 'space-between', mt: 2, mb: 2 }}>
         {!isAdding && (
           <Button 
             variant="outlined" 
