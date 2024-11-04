@@ -122,21 +122,23 @@ const PersonDetails = ({
   };
 
   const handleDelete = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const personTypeEndpoint = PERSON_TYPES[personType];
-      await axios.delete(`/api/${personTypeEndpoint}/${formData.id}`);
-      setSuccessMessage(`Successfully deleted ${formData.name}`);
-      onDelete(formData.id);
-    } catch (err) {
-      setError(
-        err.response?.data?.message || 
-        'An error occurred while deleting. Please try again.'
-      );
-    } finally {
-      setLoading(false);
+    if (window.confirm(`Are you sure you want to delete ${person.name}?`)) {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const personTypeEndpoint = PERSON_TYPES[personType];
+        await axios.delete(`/api/${personTypeEndpoint}/${formData.id}`);
+        setSuccessMessage(`Successfully deleted ${formData.name}`);
+        onDelete(formData.id);
+      } catch (err) {
+        setError(
+          err.response?.data?.message || 
+          'An error occurred while deleting. Please try again.'
+        );
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

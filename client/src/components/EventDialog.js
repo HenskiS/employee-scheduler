@@ -58,7 +58,6 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   }, [event, newEvent]);
 
   const handleInputChange = (e) => {
-    console.log(e)
     const { name, value } = e.target;
     console.log(`name: ${name}, value: ${value}`)
     if (name === "technicians") setFormData({...formData, technicians: technicians.push(value)})
@@ -105,10 +104,6 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
       }
     }
   };
-
-  useEffect(()=>{
-    console.log(formData)
-  }, [formData])
 
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
