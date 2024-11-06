@@ -1,14 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { TextField, MenuItem, Checkbox, FormControlLabel } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { RRule } from 'rrule';
 import moment from 'moment';
 
-const RecurringEventForm = ({ startDate, rrule, onSave }) => {
-  const [frequency, setFrequency] = useState('WEEKLY');
-  const [interval, setInterval] = useState(1);
-  const [weekdays, setWeekdays] = useState([]);
-  const [untilDate, setUntilDate] = useState(null);
+const RecurringEventForm = ({ startDate, rrule, onChange }) => {
+  const [formState, setFormState] = useState({
+    frequency: 'WEEKLY',
+    interval: 1,
+    weekdays: [],
+    untilDate: null
+  });
+
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const weekdayMap = {
     0: 'MO',
@@ -20,54 +24,87 @@ const RecurringEventForm = ({ startDate, rrule, onSave }) => {
     6: 'SU'
   };
 
+  // Initialize form from rrule or set defaults
   useEffect(() => {
-    if (rrule) {
-      try {
-        const parsedRule = RRule.fromString(rrule);
-        setFrequency(RRule.FREQUENCIES[parsedRule.options.freq]);
-        setInterval(parsedRule.options.interval || 1);
-        if (parsedRule.options.byweekday) {
-          setWeekdays(parsedRule.options.byweekday.map(day => weekdayMap[day.weekday]));
+    if (isInitialLoad) {
+      if (rrule) {
+        try {
+          const parsedRule = RRule.fromString(rrule);
+          setFormState({
+            frequency: RRule.FREQUENCIES[parsedRule.options.freq],
+            interval: parsedRule.options.interval || 1,
+            weekdays: parsedRule.options.byweekday ? 
+              parsedRule.options.byweekday.map(day => weekdayMap[day]) : [],
+            untilDate: parsedRule.options.until ? moment(parsedRule.options.until) : null
+          });
+        } catch (error) {
+          console.error("Error parsing rrule:", error);
+          // On error, keep default state
         }
-        setUntilDate(parsedRule.options.until ? moment(parsedRule.options.until) : null);
-      } catch (error) {
-        console.error("Error parsing rrule:", error);
+      } else {
+        // For new events, initialize with default weekly recurrence on current day
+        const currentDayOfWeek = moment().format('dd').toUpperCase();
+        setFormState(prev => ({
+          ...prev,
+          weekdays: [currentDayOfWeek]
+        }));
+        
+        // Generate initial rrule for new events
+        const initialState = {
+          ...formState,
+          weekdays: [currentDayOfWeek]
+        };
+        const initialRRule = generateRRule(initialState);
+        if (initialRRule) {
+          onChange(initialRRule);
+        }
       }
+      setIsInitialLoad(false);
     }
-  }, [rrule]);
+  }, [rrule, isInitialLoad, onChange]);
 
-  const handleSave = () => {
-
+  const generateRRule = useCallback((stateToUse) => {
     const rruleOptions = {
-      freq: RRule[frequency],
-      interval: parseInt(interval) || 1,
+      freq: RRule[stateToUse.frequency],
+      interval: parseInt(stateToUse.interval) || 1,
       dtstart: startDate ? moment(startDate).toDate() : new Date(),
     };
 
-    if (untilDate && moment(untilDate).isValid()) {
-      rruleOptions.until = moment(untilDate).toDate();
+    if (stateToUse.untilDate && moment(stateToUse.untilDate).isValid()) {
+      rruleOptions.until = moment(stateToUse.untilDate).toDate();
     }
 
-    if (frequency === 'WEEKLY' && weekdays.length > 0) {
-      rruleOptions.byweekday = weekdays.map(day => {
-        return RRule[day];
-      });
+    if (stateToUse.frequency === 'WEEKLY' && stateToUse.weekdays.length > 0) {
+      rruleOptions.byweekday = stateToUse.weekdays.map(day => RRule[day]);
     }
 
     try {
       const rule = new RRule(rruleOptions);
-      const ruleString = rule.toString();
-      console.log("Generated rrule string:", ruleString);
-      onSave(ruleString);
+      return rule.toString();
     } catch (error) {
       console.error("Error creating RRule:", error);
-      console.log("RRule options causing error:", JSON.stringify(rruleOptions, null, 2));
+      return null;
     }
-  };
+  }, [startDate]);
 
-  useEffect(() => {
-    handleSave();
-  }, [frequency, interval, weekdays, untilDate]);
+  const updateFormState = (updates) => {
+    // Create the new state immediately
+    const newState = {
+      ...formState,
+      ...updates
+    };
+    
+    // Generate rrule with the new state before setting it
+    if (!isInitialLoad) {
+      const newRRule = generateRRule(newState);
+      if (newRRule) {
+        onChange(newRRule);
+      }
+    }
+    
+    // Update the form state
+    setFormState(newState);
+  };
 
   return (
     <div className='recurring-form'>
@@ -77,8 +114,8 @@ const RecurringEventForm = ({ startDate, rrule, onSave }) => {
           margin="dense"
           name="frequency"
           label="Frequency"
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value)}
+          value={formState.frequency}
+          onChange={(e) => updateFormState({ frequency: e.target.value })}
         >
           <MenuItem value="DAILY">Daily</MenuItem>
           <MenuItem value="WEEKLY">Weekly</MenuItem>
@@ -89,24 +126,23 @@ const RecurringEventForm = ({ startDate, rrule, onSave }) => {
           margin="dense"
           type="number"
           label="Interval"
-          value={interval}
-          onChange={(e) => setInterval(e.target.value)}
+          value={formState.interval}
+          onChange={(e) => updateFormState({ interval: e.target.value })}
         />
       </div>
-      {frequency === 'WEEKLY' && (
+      {formState.frequency === 'WEEKLY' && (
         <div>
           {['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'].map((day) => (
             <FormControlLabel
               key={day}
               control={
                 <Checkbox
-                  checked={weekdays.includes(day)}
+                  checked={formState.weekdays.includes(day)}
                   onChange={(e) => {
-                    if (e.target.checked) {
-                      setWeekdays([...weekdays, day]);
-                    } else {
-                      setWeekdays(weekdays.filter(d => d !== day));
-                    }
+                    const newWeekdays = e.target.checked
+                      ? [...formState.weekdays, day]
+                      : formState.weekdays.filter(d => d !== day);
+                    updateFormState({ weekdays: newWeekdays });
                   }}
                 />
               }
@@ -117,8 +153,8 @@ const RecurringEventForm = ({ startDate, rrule, onSave }) => {
       )}
       <DatePicker
         label="Repeat Until"
-        value={untilDate}
-        onChange={(newValue) => setUntilDate(newValue)}
+        value={formState.untilDate}
+        onChange={(newValue) => updateFormState({ untilDate: newValue })}
         renderInput={(params) => <TextField {...params} fullWidth />}
       />
     </div>

@@ -191,11 +191,12 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// If need be, modify this event endpoint given that each Event.belongsTo(Doctor), and the doctor assigned to the event might be changed
 // Update an event
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const event = await Event.findByPk(req.params.id);
+    const event = await Event.findByPk(req.params.id, {
+      include: [{ model: RecurrenceRule }]
+    });
     if (event) {
       // Check if the doctor is being changed
       if (req.body.DoctorId && req.body.DoctorId !== event.DoctorId) {
@@ -205,9 +206,28 @@ router.put('/:id', authMiddleware, async (req, res) => {
           return res.status(404).json({ error: 'New doctor not found' });
         }
       }
-      
+      // If the event has a RecurrenceRule, find that RecurrenceRule and update if necessary
+      if (event.RecurrenceRule) {
+        if (!req.body.isRecurring) { // Delete rule if no longer occurring
+          await RecurrenceRule.destroy({ where: { EventId: event.id } });
+        } else {
+          const recurrenceRule = await RecurrenceRule.findByPk(event.RecurrenceRule.id);
+          if (recurrenceRule) {
+            // Update the RecurrenceRule if it's included in the request body
+            if (req.body.RecurrenceRule) {
+              await recurrenceRule.update(req.body.RecurrenceRule);
+            }
+          }
+        }
+      } else {
+        // Create RecurrenceRule
+        if (req.body.isRecurring) {
+          const newRule = await RecurrenceRule.create(req.body.RecurrenceRule);
+          await event.setRecurrenceRule(newRule);
+        }
+      }
       await event.update(req.body);
-      await event.reload({include: [{ model: Doctor, attributes: ['id', 'name'] }]})
+      await event.reload({include: [{ model: Doctor, attributes: ['id', 'name'] }, { model: RecurrenceRule}]})
       
       res.json(event)
       

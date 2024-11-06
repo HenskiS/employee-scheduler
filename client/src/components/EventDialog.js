@@ -33,7 +33,8 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     label: 'none',
     jobNumber: '',
     isRecurring: false,
-    rule: null,
+    RecurrenceRule: null,
+    rule: '',
     technicians: [],
     DoctorId: null
   });
@@ -52,7 +53,8 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
         startTime: moment(newEvent.start),
         endTime: moment(newEvent.end),
         jobNumber: newEvent.resourceId,
-        allDay: newEvent.allDay
+        allDay: newEvent.allDay,
+        rule: ''
       });
     }
   }, [event, newEvent]);
@@ -105,6 +107,17 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     }
   };
 
+  const handleSave = (rrule) => {
+    console.log(`New rrule: ${rrule}`);
+    if (newEvent) setFormData({ ...formData, rule: rrule })
+    else setFormData({ ...formData, RecurrenceRule: {...formData.RecurrenceRule, rule: rrule}})
+  }
+
+  useEffect(()=>{
+    console.log('formData')
+    console.log(formData)
+  }, [formData])
+
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -130,6 +143,20 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             rows={3}
             value={formData.description}
             onChange={handleInputChange}
+          />
+          <Autocomplete 
+            name="doctor"
+            label="Doctor"
+            options={doctors}
+            getOptionLabel={option => option.name}
+            value={formData.DoctorId? doctors.filter(doc=>doc.id===formData.DoctorId)[0] : null}
+            onChange={(event, newValue) => {
+              handleInputChange({
+                target: { name: 'DoctorId', value: newValue ? newValue.id : null }
+              });
+            }}
+            sx={{margin: "5px 0px 12px 0px"}}
+            renderInput={(params) => <TextField {...params} label="Doctor" />}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0px' }}>
           <DateTimePicker
@@ -164,7 +191,9 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             label="Recurring"
           />
           {formData.isRecurring && 
-            <RecurringEventForm startDate={formData.startTime} rrule={formData.RecurrenceRule?.rule ?? null} onSave={(rrule)=>setFormData({ ...formData, rule: rrule}) } />}
+            <RecurringEventForm startDate={formData.startTime} 
+                                rrule={formData.RecurrenceRule?.rule ? formData.RecurrenceRule.rule : null} 
+                                onChange={handleSave} />}
           {/*<div className='dialog-split'>
             <div className='left'>*/}
               <TextField
@@ -205,21 +234,6 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
                   </MenuItem>
                 ))}
               </TextField>
-              
-              <Autocomplete 
-                name="doctor"
-                label="Doctor"
-                options={doctors}
-                getOptionLabel={option => option.name}
-                value={formData.DoctorId? doctors.filter(doc=>doc.id===formData.DoctorId)[0] : null}
-                onChange={(event, newValue) => {
-                  handleInputChange({
-                    target: { name: 'DoctorId', value: newValue ? newValue.id : null }
-                  });
-                }}
-                sx={{marginTop: "8px"}}
-                renderInput={(params) => <TextField {...params} label="Doctor" />}
-              />
               {/*newEvent? null:<Button variant='outlined'>Technicians</Button>*/}
             {/*</div>
           </div>*/}
