@@ -20,6 +20,7 @@ import moment from 'moment';
 import axios from '../api/axios'
 import { useScheduling } from './SchedulingContext';
 import RecurringEventForm from './RecurringEventForm';
+import TechnicianSelector from './TechnicianSelector';
 
 function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
@@ -35,7 +36,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     isRecurring: false,
     RecurrenceRule: null,
     rule: '',
-    technicians: [],
+    Technicians: [],
     DoctorId: null
   });
 
@@ -62,9 +63,10 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     console.log(`name: ${name}, value: ${value}`)
-    if (name === "technicians") setFormData({...formData, technicians: technicians.push(value)})
+    //if (name === "technicians") setFormData({...formData, technicians: technicians.push(value)})
     // console.log(`${name}: ${value}`)
-    else setFormData({ ...formData, [name]: value });
+    //else 
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleDateChange = (name) => (date) => {
@@ -113,10 +115,6 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     else setFormData({ ...formData, RecurrenceRule: {...formData.RecurrenceRule, rule: rrule}})
   }
 
-  useEffect(()=>{
-    console.log('formData')
-    console.log(formData)
-  }, [formData])
 
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
@@ -157,6 +155,13 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             }}
             sx={{margin: "5px 0px 12px 0px"}}
             renderInput={(params) => <TextField {...params} label="Doctor" />}
+          />
+          <TechnicianSelector
+            selectedTechnicians={formData.Technicians}
+            availableTechnicians={technicians}
+            onChange={(newTechnicians) => {
+              setFormData({ ...formData, Technicians: newTechnicians });
+            }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0px' }}>
           <DateTimePicker

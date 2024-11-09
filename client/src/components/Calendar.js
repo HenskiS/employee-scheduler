@@ -6,37 +6,33 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import '../CalendarStyles.css';
 import EventDialog from './EventDialog';
 import { useScheduling } from './SchedulingContext';
-import { Tabs, Tab, Box, Button } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import CalendarHeader from './CalendarHeader';
 
 const localizer = momentLocalizer(moment);
 
 const MyCalendar = () => {
-  const [tabValue, setTabValue] = useState(0);
   const [view, setView] = useState("jobs");
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-    setView(newValue ? "techs":"jobs")
-  };
-  const { technicians, events, refreshData, throughThirty, updateDateRange } = useScheduling()
+  const { technicians, events, refreshData, throughThirty, updateDateRange } = useScheduling();
   const [resources, setResources] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [newEvent, setNewEvent] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
   const { colorMap } = useScheduling();
 
+  // Modified to handle both job numbers and technician resources
   useEffect(() => {
-    let r
-    if (view === "jobs")
-      r = throughThirty.map(num => ({ id: num, title: num}))
-    else r = technicians.map(technician => ({ id: technician.id, title: technician.name })) 
-    setResources(r)
-  }, [view, technicians])
+    let r;
+    if (view === "jobs") {
+      r = throughThirty.map(num => ({ id: num, title: num }));
+    } else {
+      r = technicians.map(technician => ({ 
+        id: technician.id, 
+        title: technician.name 
+      }));
+    }
+    setResources(r);
+  }, [view, technicians, throughThirty]);
 
   useEffect(() => {
     const start = moment(selectedDate).startOf('day');
@@ -44,26 +40,21 @@ const MyCalendar = () => {
     updateDateRange(start, end);
   }, [selectedDate]);
 
-  const findtechnicianById = (technicianId) => {
-    return technicians.find(technician => technician.technician_id === technicianId) || null;
-  };
-  
   const findEventById = (eventId) => {
     return events.find(event => event.id === eventId) || null;
   };
 
   const handleSelectEvent = (e) => {
-    const event = findEventById(e.id)
+    const event = findEventById(e.id);
     setSelectedEvent(event);
-    setNewEvent(null)
+    setNewEvent(null);
     setIsDialogOpen(true);
   };
 
   const handleSelectSlot = (slotInfo) => {
     if (view === "jobs") {
       const { start, end, resourceId, slots } = slotInfo;
-
-      let adjEnd = end
+      let adjEnd = end;
       if (slots.length === 2) {
         adjEnd = moment(start).add(4, 'hour');
       }
@@ -87,9 +78,7 @@ const MyCalendar = () => {
 
   const handleSaveEvent = async (event) => {
     try {
-      const user = {id: 1}
-      const eventData = {...event, attendees: [event.technicianId] }
-
+      const eventData = {...event, attendees: [event.technicianId] };
       if (event.id) {
         await axios.put(`/api/events/${event.id}`, eventData);
       } else {
@@ -102,14 +91,36 @@ const MyCalendar = () => {
     }
   };
 
-  const calendarStyle = {
-    flex: 1,
-    minHeight: 0,
-    overflowX: 'auto',
-    overflowY: 'auto'
+  // Modified to create multiple events for each technician assignment
+  const processEvents = () => {
+    return events.flatMap(event => {
+      if (view === "jobs") {
+        return [{
+          id: event.id,
+          title: event.name,
+          start: new Date(event.startTime),
+          end: new Date(event.endTime),
+          resourceId: event.jobNumber,
+          allDay: event.allDay,
+          label: event.label
+        }];
+      } else {
+        // Create an event instance for each technician assigned to the event
+        return (event.Technicians || []).map(technician => ({
+          id: event.id,
+          title: event.name,
+          start: new Date(event.startTime),
+          end: new Date(event.endTime),
+          resourceId: technician.id, // Use technician ID as resource ID
+          allDay: event.allDay,
+          label: event.label
+        }));
+      }
+    });
   };
+
   const EventComponent = ({ event }) => {
-    const backgroundColor = colorMap[event.label] || '#6b7280'; // default
+    const backgroundColor = colorMap[event.label] || '#6b7280';
     
     const style = {
       backgroundColor,
@@ -161,15 +172,7 @@ const MyCalendar = () => {
       )}
       <Calendar
         localizer={localizer}
-        events={events.map(event => ({
-          id: event.id,
-          title: event.name,
-          start: new Date(event.startTime),
-          end: new Date(event.endTime),
-          resourceId: view === "jobs" ? event.jobNumber : null,
-          allDay: event.allDay,
-          label: event.label
-        }))}
+        events={processEvents()}
         components={{
           event: EventComponent
         }}
@@ -189,7 +192,7 @@ const MyCalendar = () => {
         onSelectEvent={handleSelectEvent}
         onSelectSlot={handleSelectSlot}
         selectable={true}
-        style={calendarStyle}
+        style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'auto' }}
         length={1}
       />
     </div>

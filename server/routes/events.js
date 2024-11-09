@@ -9,7 +9,7 @@ const RRule = require('rrule').RRule;
 // Create a new event
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { name, startTime, endTime, attendees, isRecurring, rule, ...otherEventData } = req.body;
+    const { name, startTime, endTime, technicians, isRecurring, rule, ...otherEventData } = req.body;
 
     // Validate required fields
     if (!name || !startTime || !endTime) {
@@ -28,12 +28,12 @@ router.post('/', authMiddleware, async (req, res) => {
       }, { transaction: t });
 
       // Associate technicians if attendees are provided
-      if (attendees && attendees.length > 0) {
-        const technicians = await Technician.findAll({
-          where: { id: attendees },
+      if (technicians && technicians.length > 0) {
+        const techs = await Technician.findAll({
+          where: { id: technicians.map(t=>t.id) },
           transaction: t
         });
-        await event.setTechnicians(technicians, { transaction: t });
+        await event.setTechnicians(techs, { transaction: t });
       }
 
       // Create recurrence rule if provided
@@ -195,46 +195,72 @@ router.get('/:id', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const event = await Event.findByPk(req.params.id, {
-      include: [{ model: RecurrenceRule }]
+      include: [
+        { model: RecurrenceRule },
+        { model: Technician }
+      ]
     });
-    if (event) {
-      // Check if the doctor is being changed
-      if (req.body.DoctorId && req.body.DoctorId !== event.DoctorId) {
-        // Verify that the new doctor exists
-        const newDoctor = await Doctor.findByPk(req.body.DoctorId);
-        if (!newDoctor) {
-          return res.status(404).json({ error: 'New doctor not found' });
-        }
-      }
-      // If the event has a RecurrenceRule, find that RecurrenceRule and update if necessary
-      if (event.RecurrenceRule) {
-        if (!req.body.isRecurring) { // Delete rule if no longer occurring
-          await RecurrenceRule.destroy({ where: { EventId: event.id } });
-        } else {
-          const recurrenceRule = await RecurrenceRule.findByPk(event.RecurrenceRule.id);
-          if (recurrenceRule) {
-            // Update the RecurrenceRule if it's included in the request body
-            if (req.body.RecurrenceRule) {
-              await recurrenceRule.update(req.body.RecurrenceRule);
-            }
-          }
-        }
-      } else {
-        // Create RecurrenceRule
-        if (req.body.isRecurring) {
-          const newRule = await RecurrenceRule.create(req.body.RecurrenceRule);
-          await event.setRecurrenceRule(newRule);
-        }
-      }
-      await event.update(req.body);
-      await event.reload({include: [{ model: Doctor, attributes: ['id', 'name'] }, { model: RecurrenceRule}]})
-      
-      res.json(event)
-      
-    } else {
-      res.status(404).json({ error: 'Event not found' });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
     }
+
+    // Check if the doctor is being changed
+    if (req.body.DoctorId && req.body.DoctorId !== event.DoctorId) {
+      const newDoctor = await Doctor.findByPk(req.body.DoctorId);
+      if (!newDoctor) {
+        return res.status(404).json({ error: 'New doctor not found' });
+      }
+    }
+
+    // Handle RecurrenceRule updates
+    if (event.RecurrenceRule) {
+      if (!req.body.isRecurring) {
+        await RecurrenceRule.destroy({ where: { EventId: event.id } });
+      } else if (req.body.RecurrenceRule) {
+        const recurrenceRule = await RecurrenceRule.findByPk(event.RecurrenceRule.id);
+        if (recurrenceRule) {
+          await recurrenceRule.update(req.body.RecurrenceRule);
+        }
+      }
+    } else if (req.body.isRecurring && req.body.RecurrenceRule) {
+      const newRule = await RecurrenceRule.create(req.body.RecurrenceRule);
+      await event.setRecurrenceRule(newRule);
+    }
+
+    // Handle technician updates
+    if (req.body.Technicians) {
+      const technicianIds = req.body.Technicians.map(tech => tech.id);
+      // Verify all technicians exist
+      const technicians = await Technician.findAll({
+        where: {
+          id: technicianIds
+        }
+      });
+      if (technicians.length !== technicianIds.length) {
+        return res.status(404).json({ error: 'One or more technicians not found' });
+      }
+
+      // Update the technician associations
+      await event.setTechnicians(technicianIds);
+    }
+
+    // Update the event
+    await event.update(req.body);
+
+    // Reload the event with all associations
+    await event.reload({
+      include: [
+        { model: Doctor, attributes: ['id', 'name'] },
+        { model: RecurrenceRule },
+        { model: Technician }
+      ]
+    });
+
+    res.json(event);
+
   } catch (error) {
+    console.error('Error updating event:', error);
     res.status(400).json({ error: error.message });
   }
 });
