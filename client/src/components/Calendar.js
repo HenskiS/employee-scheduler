@@ -181,6 +181,7 @@ const MyCalendar = () => {
         defaultView="day"
         views={['day', 'agenda']}
         step={60}
+        length={0}
         timeslots={1}
         min={new Date(2024, 0, 1, 7, 0, 0)}
         max={new Date(2024, 0, 1, 21, 0, 0)}
@@ -193,7 +194,6 @@ const MyCalendar = () => {
         onSelectSlot={handleSelectSlot}
         selectable={true}
         style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'auto' }}
-        length={1}
       />
     </div>
   );
