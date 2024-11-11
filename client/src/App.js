@@ -1,3 +1,4 @@
+// Based on this app.js, write a logout function that I can copy paste into my page header file
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
 import { CssBaseline, Container } from '@mui/material';
@@ -19,6 +20,11 @@ function App() {
     console.log('Login successful, setting authenticated state');
     setIsAuthenticated(true);
   };
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setIsAuthenticated(false);
+    navigate('/login');
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -30,7 +36,7 @@ function App() {
   return (
     <>
       <CssBaseline />
-      <Header />
+      <Header isAuthenticated={isAuthenticated} logout={handleLogout} />
       <Container maxWidth={false}>
         <SchedulingProvider>
           <Routes>
