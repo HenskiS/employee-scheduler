@@ -9,7 +9,7 @@ const RRule = require('rrule').RRule;
 // Create a new event
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { name, startTime, endTime, technicians, isRecurring, rule, ...otherEventData } = req.body;
+    const { name, startTime, endTime, Technicians, isRecurring, rule, ...otherEventData } = req.body;
 
     // Validate required fields
     if (!name || !startTime || !endTime) {
@@ -28,9 +28,9 @@ router.post('/', authMiddleware, async (req, res) => {
       }, { transaction: t });
 
       // Associate technicians if attendees are provided
-      if (technicians && technicians.length > 0) {
+      if (Technicians && Technicians.length > 0) {
         const techs = await Technician.findAll({
-          where: { id: technicians.map(t=>t.id) },
+          where: { id: Technicians.map(tech=>tech.id) },
           transaction: t
         });
         await event.setTechnicians(techs, { transaction: t });
