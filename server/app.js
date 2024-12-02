@@ -14,6 +14,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/test', (req, res) => { return res.json("Server is running!")});
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/users', userRoutes);
