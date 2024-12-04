@@ -2,15 +2,20 @@ const { app, Tray, Menu, BrowserWindow } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const fs = require('fs');
+const ConfigManager = require('./configManager')
 
 class ServerManager {
   constructor() {
+    const userDataPath = app.getPath('userData')
+    this.configManager = new ConfigManager(userDataPath);
+    const config = this.configManager.loadConfig();
+    
     this.tray = null;
     this.serverProcess = null;
-    this.pidFile = path.join(__dirname, 'server.pid');
-    this.serverScript = path.join(__dirname, '..', 'server', 'app.js');
     this.window = null;
-    this.logFile = path.join(__dirname, 'server.log');
+    this.serverScript = config.serverPath;
+    this.logFile = path.join(app.getPath('userData'), 'server.log');
+    this.pidFile = path.join(app.getPath('userData'), 'server.pid');
   }
 
   async initialize() {
@@ -39,7 +44,7 @@ class ServerManager {
   }
 
   createTray() {
-    this.tray = new Tray(path.join(__dirname, 'icon.png'));
+    this.tray = new Tray(path.join(__dirname, 'icon.ico'));
     this.tray.setToolTip('Express Server Manager');
     
     // Add click handler to show menu on left click
@@ -97,14 +102,22 @@ class ServerManager {
 
   stopServer() {
     if (this.serverProcess) {
-      this.serverProcess.kill();
-      this.serverProcess = null;
+        if (this.serverProcess.kill) { // For processes we started directly
+            this.serverProcess.kill();
+        } else if (this.serverProcess.pid) { // For recovered processes
+            try {
+                process.kill(this.serverProcess.pid);
+            } catch (e) {
+                console.error('Failed to kill process:', e);
+            }
+        }
+        this.serverProcess = null;
     }
     if (fs.existsSync(this.pidFile)) {
-      fs.unlinkSync(this.pidFile);
+        fs.unlinkSync(this.pidFile);
     }
     this.updateTrayMenu();
-  }
+}
 
   checkServerStatus() {
     return this.serverProcess !== null;
@@ -138,6 +151,26 @@ class ServerManager {
       },
       { type: 'separator' },
       {
+        label: 'Set Server Path',
+        click: async () => {
+          const { dialog } = require('electron');
+          const result = await dialog.showOpenDialog({
+            properties: ['openFile'],
+            filters: [{ name: 'JavaScript', extensions: ['js'] }]
+          });
+          
+          if (!result.canceled && result.filePaths.length > 0) {
+            const success = this.updateServerPath(result.filePaths[0]);
+            if (!success) {
+              dialog.showMessageBox({
+                type: 'error',
+                message: 'Invalid server file selected'
+              });
+            }
+          }
+        }
+      },
+      {
         label: 'Open Server Log',
         click: () => this.openLogFile()
       },
@@ -156,14 +189,26 @@ class ServerManager {
 
   recoverServer() {
     if (fs.existsSync(this.pidFile)) {
-      const pid = parseInt(fs.readFileSync(this.pidFile, 'utf8'));
-      try {
-        process.kill(pid, 0);
-        this.serverProcess = { pid };
-      } catch (e) {
-        fs.unlinkSync(this.pidFile);
-      }
+        const pid = parseInt(fs.readFileSync(this.pidFile, 'utf8'));
+        try {
+            // Check if process exists
+            process.kill(pid, 0);
+            // If we get here, process exists
+            this.serverProcess = { pid };  // Still just store the pid
+        } catch (e) {
+            // Process doesn't exist, clean up the file
+            fs.unlinkSync(this.pidFile);
+        }
     }
+}
+
+  updateServerPath(newPath) {
+    if (this.configManager.validateServerPath(newPath)) {
+      this.configManager.updateServerPath(newPath);
+      this.serverScript = newPath;
+      return true;
+    }
+    return false;
   }
 }
 

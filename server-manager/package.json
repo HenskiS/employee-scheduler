@@ -3,14 +3,25 @@
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.employeescheduler",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    }
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "auto-launch": "^5.0.6",
-    "electron": "^33.2.1"
+    "auto-launch": "^5.0.6"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
   }
 }
