@@ -58,7 +58,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     const [error, setError] = useState(null);
 
     const fetchData = useCallback(async () => {
-        console.log(`Date range: ${JSON.stringify(dateRange)}`)
+        // console.log(`Date range: ${JSON.stringify(dateRange)}`)
         try {
             setLoading(true);
             

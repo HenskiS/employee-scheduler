@@ -77,10 +77,13 @@ class ServerManager {
     if (this.serverProcess) {
       return;
     }
+
+    require('dotenv').config({ path: path.join(path.dirname(this.serverScript), '.env') });
     
     this.serverProcess = spawn('node', [this.serverScript], {
       detached: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env }
     });
 
     fs.writeFileSync(this.pidFile, this.serverProcess.pid.toString());

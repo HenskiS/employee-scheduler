@@ -23,3 +23,8 @@
 .rbc-event-label {
     display: none;
 }
+
+.rbc-today {
+    background-color: transparent !important;
+    color: inherit !important;
+}  
