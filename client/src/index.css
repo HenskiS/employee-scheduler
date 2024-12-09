@@ -140,3 +140,11 @@ td:hover {
   text-align: center;
   margin: 1rem 0;
 }
+.print-calendar-page {
+  page-break-after: always;
+}
+.print-calendar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
