@@ -1,0 +1,35 @@
+/* PrintCalendarStyles.css */
+.rbc-event {
+    /*background: none !important;*/
+    border: 1px solid !important;
+    outline: none !important;
+    padding: 0 !important;
+}
+
+.rbc-event-content {
+    height: 100%;
+    width: 100%;
+}
+
+.rbc-selected {
+    background: none !important;
+}
+
+.rbc-event.rbc-selected {
+    background: none !important;
+    outline: none !important;
+}
+
+.rbc-event-label {
+    display: none;
+}
+
+.rbc-today {
+    background-color: transparent !important;
+    color: inherit !important;
+}
+.rbc-month-row {
+    display: inline-table !important;
+    flex: 0 0 0 !important;
+    min-height: 50px !important;
+}

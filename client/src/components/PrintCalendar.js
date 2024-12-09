@@ -1,19 +1,20 @@
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment, { months } from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import '../CalendarStyles.css';
+import '../PrintCalendarStyles.css';
 import {sampleEvents} from './sampleEvents'
 import { useScheduling } from './SchedulingContext';
 
 const localizer = momentLocalizer(moment);
 
 const EventComponent = ({ event }) => {
-    const backgroundColor = '#6b7280'
+    const { colorMap } = useScheduling()
+    const backgroundColor = colorMap[event.label] || '#3174ad'
     
     const style = {
       backgroundColor,
       color: 'black',
-      padding: '4px 8px',
+      padding: '2px',
       borderRadius: '4px',
       overflow: 'hidden',
       fontSize: '14px',
@@ -22,7 +23,7 @@ const EventComponent = ({ event }) => {
     };
   
     const timeStyle = {
-      fontSize: '12px',
+      fontSize: '14px',
       marginBottom: '0px'
     };
   
@@ -30,20 +31,23 @@ const EventComponent = ({ event }) => {
       fontWeight: 'bold'
     };
   
-    const startTime = moment(event.start).format('h:mm A');
-    const endTime = moment(event.end).format('h:mm A');
+    const startTime = moment(event.start).format('h:mma');
+    const endTime = moment(event.end).format('h:mma');
     
     return (
       <div style={style}>
-        <div style={timeStyle}>{`${startTime} – ${endTime}`}</div>
-        <div style={titleStyle}>{event.title}</div>
+        <div style={timeStyle}>
+            <b style={{paddingRight: "5px"}}>{event.title}</b>
+            {`${startTime}–${endTime}`}
+        </div>
       </div>
     );
 };
 
 const PrintCalendar = ({eventsList, viewMode}) => {
+    const {events:sampleEvents2} = useScheduling()
     
-    const events = eventsList || sampleEvents;
+    const events = eventsList || sampleEvents2;
     const view = viewMode || "month";
 
     const processEvents = () => {
@@ -53,6 +57,7 @@ const PrintCalendar = ({eventsList, viewMode}) => {
                 start: new Date(event.startTime),
                 end: new Date(event.endTime),
                 allDay: event.allDay,
+                label: event.label
             }]
         })
     }
@@ -66,7 +71,7 @@ const PrintCalendar = ({eventsList, viewMode}) => {
     const monthKey = moment().format('YYYY-MM')
 
     return (
-        <div >
+        <div>
             <div key={monthKey} className="cal-container">
                 <CustomToolbar date={moment(monthKey).toDate()} />
                 <Calendar
@@ -78,7 +83,8 @@ const PrintCalendar = ({eventsList, viewMode}) => {
                     startAccessor={"start"}
                     endAccessor={"end"}
                     defaultView={view}
-                    toolbar={false}
+                    toolbar={true}
+                    showAllEvents
                 />
             </div>
         </div>
