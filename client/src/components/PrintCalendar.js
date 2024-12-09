@@ -6,21 +6,34 @@ import '../CalendarStyles.css';
 
 const localizer = momentLocalizer(moment);
 
-// give me another way to say events and view so I don't repeat these variable names
 const PrintCalendar = ({eventsList, viewMode}) => {
     const events = eventsList ?? []
     const view = viewMode ?? "month"
-    
+    const CustomToolbar = () => {
+        const monthToShow = events.length > 0 
+            ? moment(events[0].start).format('MMMM YYYY')
+            : moment().format('MMMM YYYY');
+            
+        return (
+            <div className="print-cal-month">
+                {monthToShow}
+            </div>
+        );
+    };
+
     return (
+        <>
+        <CustomToolbar />
         <Calendar
             localizer={localizer}
             events={events}
             startAccessor="start"
             endAccessor="end"
-            style={{ height: 500, marginTop: "30px" }}
+            style={{ height: 500, marginTop: "10px" }}
             defaultView={view} // "month" "week" or "agenda"
             toolbar={false}
         />
+        </>
     )
 }
 

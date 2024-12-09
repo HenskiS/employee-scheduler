@@ -133,3 +133,10 @@ td:hover {
 .recurring-form > * {
   margin: 10px 10px;
 }
+
+.print-cal-month {
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 1rem 0;
+}
