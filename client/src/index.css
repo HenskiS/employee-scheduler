@@ -92,9 +92,10 @@ td:hover {
 }
 
 .cal-container {
-  height: 80vh;
+  min-height: 80vh;
   display: flex;
   flex-direction: column;
+  margin-bottom: 20px;
 };
 
 .rbc-day-slot .rbc-events-container {
