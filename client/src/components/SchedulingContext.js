@@ -79,6 +79,10 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         }
     }, [dateRange]);
 
+    useEffect(()=>{
+        if (events)
+            console.log(events)
+    }, [events])
     useEffect(() => {
         fetchData();
 
@@ -94,14 +98,14 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     const updateDateRange = useCallback((start, end) => {
         const newStart = moment(start).startOf('day');
         const newEnd = moment(end).endOf('day');
-        
         if (newStart.isBefore(dateRange.start) || newEnd.isAfter(dateRange.end)) {
             const newMonth = newStart.clone().startOf('month');
-            setDateRange({
+            /*setDateRange({
                 start: newMonth.clone().startOf('month').toISOString(),
                 end: newMonth.clone().endOf('month').toISOString()
-            });
-        }
+            });*/
+            setDateRange({start, end})
+        }   
     }, [dateRange]);
 
     return (
