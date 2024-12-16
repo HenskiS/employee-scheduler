@@ -40,6 +40,18 @@
     text-align: center;
     margin: 1rem 0;
 }
+.print-cal-week {
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    margin: 1rem 0;
+}
+.print-cal-agenda {
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    margin: 1rem 0;
+}
 .print-cal-page {
     page-break-after: always;
 }

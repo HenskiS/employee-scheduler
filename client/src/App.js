@@ -72,7 +72,12 @@ function App() {
               path="/print"
               element={
                 <ProtectedRoute isLoading={isLoading}>
-                  <PrintCalendar />
+                  <PrintCalendar 
+                    dateRange={{
+                      start: '2024-10-01',
+                      end: '2024-12-31'
+                    }}
+                  />
                 </ProtectedRoute>
               }
             />

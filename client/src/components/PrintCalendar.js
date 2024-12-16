@@ -1,7 +1,3 @@
-// Modify this component so that it displays a separate calendars for each month of events.
-// Currently, only one month can be displayed
-// I'll help modify the component to display multiple months. Here's the updated version:
-
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -44,7 +40,25 @@ const EventComponent = ({ event }) => {
     );
 };
 
-const PrintCalendar = ({eventsList, viewMode}) => {
+const AgendaEventComponent = ({ event }) => {
+    const { colorMap } = useScheduling()
+    const backgroundColor = colorMap[event.label] || '#3174ad'
+    
+    const style = {
+        backgroundColor: backgroundColor + '20',
+        borderLeft: `4px solid ${backgroundColor}`,
+        padding: '0 4px',
+        margin: '2px 0'
+    };
+    
+    return (
+        <div style={style}>
+            {event.title}
+        </div>
+    );
+};
+
+const PrintCalendar = ({eventsList, viewMode, dateRange}) => {
     const {events:sampleEvents2, updateDateRange} = useScheduling()
     
     const events = eventsList || sampleEvents2;
@@ -68,46 +82,125 @@ const PrintCalendar = ({eventsList, viewMode}) => {
         updateDateRange(start, end)
     }, [])
 
-    const CustomToolbar = ({ date }) => (
-        <div className="print-cal-month">
-            {moment(date).format('MMMM YYYY')}
-        </div>
-    );
-
-    // Get unique months from events
-    const getUniqueMonths = () => {
-        const processedEvents = processEvents();
-        const months = processedEvents.map(event => moment(event.start).format('YYYY-MM'));
-        return [...new Set(months)].sort();
+    const CustomToolbar = ({ date, view }) => {
+        if (view === 'month') {
+            return (
+                <div className="print-cal-month">
+                    {moment(date).format('MMMM YYYY')}
+                </div>
+            );
+        } else if (view === 'week') {
+            return (
+                <div className="print-cal-week">
+                    {`Week of ${moment(date).startOf('week').format('MMMM D, YYYY')}`}
+                </div>
+            );
+        } else {
+            return (
+                <div className="print-cal-agenda">
+                    {`Events: ${moment(date).format('MMMM YYYY')}`}
+                </div>
+            );
+        }
     };
 
-    const uniqueMonths = getUniqueMonths();
+    // Get periods (months or weeks) based on dateRange or events
+    const getPeriods = () => {
+        if (!dateRange) {
+            // If no dateRange provided, get periods from events
+            const processedEvents = processEvents();
+            if (view === 'month' || view === 'agenda') {
+                const months = processedEvents.map(event => moment(event.start).format('YYYY-MM'));
+                return [...new Set(months)].sort();
+            } else {
+                const weeks = processedEvents.map(event => 
+                    moment(event.start).startOf('week').format('YYYY-MM-DD')
+                );
+                return [...new Set(weeks)].sort();
+            }
+        } else {
+            // Generate periods based on dateRange
+            const { start, end } = dateRange;
+            const periods = [];
+            let current = moment(start);
+            const endDate = moment(end);
+
+            while (current.isSameOrBefore(endDate)) {
+                if (view === 'month' || view === 'agenda') {
+                    periods.push(current.format('YYYY-MM'));
+                    current.add(1, 'month');
+                } else {
+                    periods.push(current.startOf('week').format('YYYY-MM-DD'));
+                    current.add(1, 'week');
+                }
+            }
+            return periods;
+        }
+    };
+
+    const periods = getPeriods();
+
+    // Custom time slots for weekly view
+    const getTimeSlotProps = () => {
+        if (view === 'week') {
+            return {
+                step: 60,
+                timeslots: 1,
+                min: moment().startOf('day').add(8, 'hours').toDate(),
+                max: moment().startOf('day').add(18, 'hours').toDate(),
+            }
+        }
+        return {}
+    }
 
     return (
         <div>
-            {uniqueMonths.map(monthKey => {
-                const monthStart = moment(monthKey).startOf('month').toDate();
-                const monthEnd = moment(monthKey).endOf('month').toDate();
+            {periods.map(periodKey => {
+                const periodStart = view === 'week'
+                    ? moment(periodKey).startOf('week').toDate()
+                    : moment(periodKey).startOf('month').toDate();
                 
-                const monthEvents = processEvents().filter(event => 
-                    moment(event.start).format('YYYY-MM') === monthKey
-                );
+                const periodEnd = view === 'week'
+                    ? moment(periodKey).endOf('week').toDate()
+                    : moment(periodKey).endOf('month').toDate();
+                
+                const periodEvents = processEvents().filter(event => {
+                    if (view === 'week') {
+                        const eventStart = moment(event.start);
+                        const weekStart = moment(periodKey);
+                        return eventStart.isSameOrAfter(weekStart, 'day') && 
+                               eventStart.isBefore(weekStart.clone().add(1, 'week'), 'day');
+                    } else {
+                        return moment(event.start).format('YYYY-MM') === periodKey;
+                    }
+                });
 
                 return (
-                    <div key={monthKey} className="cal-container print-cal-page">
-                        <CustomToolbar date={moment(monthKey).toDate()} />
+                    <div 
+                        key={periodKey} 
+                        className="cal-container print-cal-page"
+                    >
+                        <CustomToolbar 
+                            date={view === 'week'
+                                ? moment(periodKey).startOf('week').toDate()
+                                : moment(periodKey).toDate()
+                            } 
+                            view={view}
+                        />
                         <Calendar
                             localizer={localizer}
-                            events={monthEvents}
+                            events={periodEvents}
                             components={{
-                                event: EventComponent
+                                event: view === 'agenda' ? AgendaEventComponent : EventComponent
                             }}
                             startAccessor="start"
                             endAccessor="end"
                             defaultView={view}
-                            defaultDate={monthStart}
+                            defaultDate={periodStart}
                             toolbar={false}
                             showAllEvents
+                            {...getTimeSlotProps()}
+                            length={30}
                         />
                     </div>
                 );
@@ -117,14 +210,3 @@ const PrintCalendar = ({eventsList, viewMode}) => {
 };
 
 export default PrintCalendar;
-
-// The main changes include:
-// 1. Added a getUniqueMonths function to extract unique months from events
-// 2. Using map to create a calendar for each unique month
-// 3. Filtering events for each month's calendar
-// 4. Setting the specific date for each calendar to show the correct month
-// 
-// You might want to add some CSS to space out the calendars:
-// .cal-container {
-//     margin-bottom: 2rem;
-// }
