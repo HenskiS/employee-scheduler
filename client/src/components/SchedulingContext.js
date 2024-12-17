@@ -79,10 +79,6 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         }
     }, [dateRange]);
 
-    useEffect(()=>{
-        if (events)
-            console.log(events)
-    }, [events])
     useEffect(() => {
         fetchData();
 

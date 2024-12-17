@@ -81,7 +81,9 @@ router.get('/', authMiddleware, async (req, res) => {
     const { start, end } = req.query;
 
     const startDate = new Date(start);
+    // Add one day to end date to include the full end date
     const endDate = new Date(end);
+    endDate.setDate(endDate.getDate() + 1);
 
     // Validate date range
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
@@ -120,7 +122,8 @@ router.get('/', authMiddleware, async (req, res) => {
       let instances = [];
 
       // Include the original event if it's within the range
-      if (eventStart >= startDate && eventStart <= endDate) {
+      // Note: We use < endDate (not <=) because endDate is now the next day
+      if (eventStart >= startDate && eventStart < endDate) {
         instances.push({
           ...event.toJSON(),
           isOriginalEvent: true

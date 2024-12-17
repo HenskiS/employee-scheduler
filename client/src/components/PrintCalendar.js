@@ -4,6 +4,7 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import '../PrintCalendarStyles.css';
 import { useScheduling } from './SchedulingContext';
 import { useEffect } from 'react';
+import { Button } from '@mui/material';
 
 const localizer = momentLocalizer(moment);
 
@@ -58,7 +59,7 @@ const AgendaEventComponent = ({ event }) => {
     );
 };
 
-const PrintCalendar = ({eventsList, viewMode, dateRange}) => {
+const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
     const {events:sampleEvents2, updateDateRange} = useScheduling()
     
     const events = eventsList || sampleEvents2;
@@ -98,7 +99,7 @@ const PrintCalendar = ({eventsList, viewMode, dateRange}) => {
         } else {
             return (
                 <div className="print-cal-agenda">
-                    {`Events: ${moment(date).format('MMMM YYYY')}`}
+                    {`Events: ${moment(dateRange.start).format('MMMM D, YYYY')} - ${moment(dateRange.end).format('MMMM D, YYYY')}`}
                 </div>
             );
         }
@@ -153,58 +154,82 @@ const PrintCalendar = ({eventsList, viewMode, dateRange}) => {
         return {}
     }
 
-    return (
-        <div>
-            {periods.map(periodKey => {
-                const periodStart = view === 'week'
-                    ? moment(periodKey).startOf('week').toDate()
-                    : moment(periodKey).startOf('month').toDate();
-                
-                const periodEnd = view === 'week'
-                    ? moment(periodKey).endOf('week').toDate()
-                    : moment(periodKey).endOf('month').toDate();
-                
-                const periodEvents = processEvents().filter(event => {
-                    if (view === 'week') {
-                        const eventStart = moment(event.start);
-                        const weekStart = moment(periodKey);
-                        return eventStart.isSameOrAfter(weekStart, 'day') && 
-                               eventStart.isBefore(weekStart.clone().add(1, 'week'), 'day');
-                    } else {
-                        return moment(event.start).format('YYYY-MM') === periodKey;
-                    }
-                });
+    const handlePrint = () => {
+        window.print()
+    };
+    const handleCancel = () => {
+        close()
+    };
+    const printStyles = `
+        @media print {
+        .no-print { display: none !important; }
+        .rbc-event { break-inside: avoid; }
+        }
+    `;
 
-                return (
-                    <div 
-                        key={periodKey} 
-                        className="cal-container print-cal-page"
-                    >
-                        <CustomToolbar 
-                            date={view === 'week'
-                                ? moment(periodKey).startOf('week').toDate()
-                                : moment(periodKey).toDate()
-                            } 
-                            view={view}
-                        />
-                        <Calendar
-                            localizer={localizer}
-                            events={periodEvents}
-                            components={{
-                                event: view === 'agenda' ? AgendaEventComponent : EventComponent
-                            }}
-                            startAccessor="start"
-                            endAccessor="end"
-                            defaultView={view}
-                            defaultDate={periodStart}
-                            toolbar={false}
-                            showAllEvents
-                            {...getTimeSlotProps()}
-                            length={30}
-                        />
-                    </div>
-                );
-            })}
+    return (
+        
+        <div><style>{printStyles}</style>
+            <div style={{display: 'flex', justifyContent: 'center', margin: '10px 0', padding: '5px'}}>
+                <Button onClick={handleCancel} className="no-print" variant='outlined' style={{margin: '0 4px'}}>
+                    Cancel
+                </Button>
+                <Button onClick={handlePrint} className="no-print" variant='outlined' style={{margin: '0 4px'}}>
+                    Print
+                </Button>
+            </div>
+            <div>
+                {periods.map(periodKey => {
+                    const periodStart = view === 'week'
+                        ? moment(periodKey).startOf('week').toDate()
+                        : moment(periodKey).startOf('month').toDate();
+                    
+                    const periodEnd = view === 'week'
+                        ? moment(periodKey).endOf('week').toDate()
+                        : moment(periodKey).endOf('month').toDate();
+                    
+                    const periodEvents = processEvents().filter(event => {
+                        if (view === 'week') {
+                            const eventStart = moment(event.start);
+                            const weekStart = moment(periodKey);
+                            return eventStart.isSameOrAfter(weekStart, 'day') && 
+                                   eventStart.isBefore(weekStart.clone().add(1, 'week'), 'day');
+                        } else {
+                            return moment(event.start).format('YYYY-MM') === periodKey;
+                        }
+                    });
+    
+                    return (
+                        <div 
+                            key={periodKey} 
+                            className="cal-container print-cal-page"
+                        >
+                            <CustomToolbar 
+                                date={view === 'week'
+                                    ? moment(periodKey).startOf('week').toDate()
+                                    : moment(periodKey).toDate()
+                                } 
+                                view={view}
+                            />
+                            <Calendar
+                                localizer={localizer}
+                                events={periodEvents}
+                                components={{
+                                    event: view === 'agenda' ? AgendaEventComponent : EventComponent
+                                }}
+                                startAccessor="start"
+                                endAccessor="end"
+                                defaultView={view}
+                                defaultDate={periodStart}
+                                toolbar={false}
+                                showAllEvents
+                                {...getTimeSlotProps()}
+                                length={30}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 };
