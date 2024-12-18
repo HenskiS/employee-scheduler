@@ -26,7 +26,7 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
   const [selectedTechnicians, setSelectedTechnicians] = useState([]);
   const [selectedView, setSelectedView] = useState('month');
 
-  const handlePrint = () => {
+  const handlePreview = () => {
     // Prepare the filter parameters
     const filterParams = {
       startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
@@ -148,8 +148,8 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handlePrint} variant="contained" color="primary">
-            Print
+          <Button onClick={handlePreview} variant="contained" color="primary">
+            Preview
           </Button>
         </DialogActions>
       </LocalizationProvider>

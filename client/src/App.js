@@ -74,7 +74,7 @@ function App() {
                 <ProtectedRoute isLoading={isLoading}>
                   <PrintCalendar 
                     dateRange={{
-                      start: '2024-10-01',
+                      start: '2024-12-01',
                       end: '2024-12-31'
                     }}
                   />

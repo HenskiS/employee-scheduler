@@ -11,32 +11,25 @@ const localizer = momentLocalizer(moment);
 const EventComponent = ({ event }) => {
     const { colorMap } = useScheduling()
     const backgroundColor = colorMap[event.label] || '#3174ad'
-    
-    const style = {
-      backgroundColor,
-      color: 'black',
-      padding: '2px',
-      borderRadius: '4px',
-      overflow: 'hidden',
-      fontSize: '14px',
-      height: '100%',
-      position: 'relative'
-    };
-  
-    const timeStyle = {
-      fontSize: '14px',
-      marginBottom: '0px'
-    };
-  
+
     const startTime = moment(event.start).format('h:mma');
     const endTime = moment(event.end).format('h:mma');
-    
+    const timeRange = `${startTime}–${endTime}`;
     return (
-      <div style={style}>
-        <div style={timeStyle}>
-            <b style={{paddingRight: "5px"}}>{event.title}</b>
-            {`${startTime}–${endTime}`}
-        </div>
+        <div 
+            //style={{backgroundColor}}
+            //className='print-event-container'
+            className='print-event-text-container'
+        >
+            {/* <div className="print-event-time" title={timeRange}>
+                {timeRange}
+            </div>
+            <div className="print-event-title" title={event.title}>
+                {event.title}
+            </div> */}
+            <div style={{color: backgroundColor}} className='print-event-text'>
+                {timeRange} {event.title}
+            </div>
       </div>
     );
 };

@@ -55,3 +55,68 @@
 .print-cal-page {
     page-break-after: always;
 }
+.print-event-container {
+    color: black;
+    padding: 5px;
+    border-radius: 4px;
+    overflow: hidden;
+    font-size: 14px;
+    height: 100%;
+    line-height: 1;
+}
+
+.print-event-time {
+    font-size: 0.75rem;
+    color: #666;
+    white-space: nowrap;  /* Changed - keep time on one line */
+    overflow: hidden;     /* Added for ellipsis */
+    text-overflow: ellipsis;  /* Added for ellipsis */
+}
+
+.print-event-title {
+    padding: 1px 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;  /* Changed - prevent wrapping */
+    overflow-x: hidden;     /* Changed from auto for ellipsis */
+    overflow-y: hidden;     /* Changed from auto for ellipsis */
+    text-overflow: ellipsis;
+    flex-grow: 1;
+}
+/* Calendar cell style - add this */
+.rbc-row-segment {
+    display: flex;
+    align-items: flex-start;
+    min-height: 24px;
+}
+
+.rbc-event {
+    flex: 0 0 auto; /* Don't grow or shrink */
+    position: relative;
+    margin-right: 2px; /* Space between events */
+}
+
+.rbc-event-content {
+    position: relative;
+    width: 100%;
+    overflow: visible !important;
+} 
+
+.print-event-text-container {
+    color: black;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1;
+    width: 100%;
+    background: inherit;
+    position: relative;
+}
+
+.print-event-text {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    white-space: normal;
+    text-overflow: ellipsis;
+    padding: 2px;
+    width: 100%;
+}
