@@ -1,80 +1,48 @@
-import { Calendar, momentLocalizer } from 'react-big-calendar';
+import React from 'react';
 import moment from 'moment';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import '../PrintCalendarStyles.css';
+import Calendar from './CustomPrintCalendar';
 import { useScheduling } from './SchedulingContext';
 import { useEffect } from 'react';
 import { Button } from '@mui/material';
 
-const localizer = momentLocalizer(moment);
-
 const EventComponent = ({ event }) => {
-    const { colorMap } = useScheduling()
-    const backgroundColor = colorMap[event.label] || '#3174ad'
+    const { colorMap } = useScheduling();
+    const backgroundColor = colorMap[event.label] || '#3174ad';
 
     const startTime = moment(event.start).format('h:mma');
     const endTime = moment(event.end).format('h:mma');
     const timeRange = `${startTime}–${endTime}`;
-    return (
-        <div 
-            //style={{backgroundColor}}
-            //className='print-event-container'
-            className='print-event-text-container'
-        >
-            {/* <div className="print-event-time" title={timeRange}>
-                {timeRange}
-            </div>
-            <div className="print-event-title" title={event.title}>
-                {event.title}
-            </div> */}
-            <div style={{color: backgroundColor}} className='print-event-text'>
-                {timeRange} {event.title}
-            </div>
-      </div>
-    );
-};
-
-const AgendaEventComponent = ({ event }) => {
-    const { colorMap } = useScheduling()
-    const backgroundColor = colorMap[event.label] || '#3174ad'
-    
-    const style = {
-        backgroundColor: backgroundColor + '20',
-        borderLeft: `4px solid ${backgroundColor}`,
-        padding: '0 4px',
-        margin: '2px 0'
-    };
     
     return (
-        <div style={style}>
-            {event.title}
+        <div className="print-event-text-container">
+            <div style={{color: backgroundColor}} className="print-event-text">
+                {event.allDay? '[All Day]' : timeRange} {event.title}
+            </div>
         </div>
     );
 };
 
 const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
-    const {events:sampleEvents2, updateDateRange} = useScheduling()
+    const {events: sampleEvents2, updateDateRange} = useScheduling();
     
     const events = eventsList || sampleEvents2;
     const view = viewMode || "month";
 
     const processEvents = () => {
-        return events.flatMap(event => {
-            return [{
-                title: event.name,
-                start: new Date(event.startTime),
-                end: new Date(event.endTime),
-                allDay: event.allDay,
-                label: event.label
-            }]
-        })
-    }
+        return events.flatMap(event => ({
+            title: event.name,
+            start: new Date(event.startTime),
+            end: new Date(event.endTime),
+            allDay: event.allDay,
+            label: event.label
+        }));
+    };
 
-    useEffect(()=>{
-        const start = moment('2024-10-01').startOf('month').toISOString()
-        const end = moment('2024-12-31').endOf('month').toISOString()
-        updateDateRange(start, end)
-    }, [])
+    useEffect(() => {
+        const start = moment('2024-10-01').startOf('month').toISOString();
+        const end = moment('2024-12-31').endOf('month').toISOString();
+        updateDateRange(start, end);
+    }, []);
 
     const CustomToolbar = ({ date, view }) => {
         if (view === 'month') {
@@ -98,10 +66,8 @@ const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
         }
     };
 
-    // Get periods (months or weeks) based on dateRange or events
     const getPeriods = () => {
         if (!dateRange) {
-            // If no dateRange provided, get periods from events
             const processedEvents = processEvents();
             if (view === 'month' || view === 'agenda') {
                 const months = processedEvents.map(event => moment(event.start).format('YYYY-MM'));
@@ -113,11 +79,9 @@ const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
                 return [...new Set(weeks)].sort();
             }
         } else {
-            // Generate periods based on dateRange
-            const { start, end } = dateRange;
             const periods = [];
-            let current = moment(start);
-            const endDate = moment(end);
+            let current = moment(dateRange.start);
+            const endDate = moment(dateRange.end);
 
             while (current.isSameOrBefore(endDate)) {
                 if (view === 'month' || view === 'agenda') {
@@ -132,54 +96,34 @@ const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
         }
     };
 
-    const periods = getPeriods();
-
-    // Custom time slots for weekly view
-    const getTimeSlotProps = () => {
-        if (view === 'week') {
-            return {
-                step: 60,
-                timeslots: 1,
-                min: moment().startOf('day').add(8, 'hours').toDate(),
-                max: moment().startOf('day').add(18, 'hours').toDate(),
-            }
-        }
-        return {}
-    }
-
     const handlePrint = () => {
-        window.print()
+        window.print();
     };
+
     const handleCancel = () => {
-        close()
+        close();
     };
-    const printStyles = `
-        @media print {
-        .no-print { display: none !important; }
-        .rbc-event { break-inside: avoid; }
-        }
-    `;
 
     return (
-        
-        <div><style>{printStyles}</style>
-            <div style={{display: 'flex', justifyContent: 'center', margin: '10px 0', padding: '5px'}}>
-                <Button onClick={handleCancel} className="no-print" variant='outlined' style={{margin: '0 4px'}}>
+        <div>
+            <style>{`
+                @media print {
+                    .no-print { display: none !important; }
+                }
+            `}</style>
+            <div className="print-controls no-print">
+                <Button onClick={handleCancel} variant="outlined" className="print-button">
                     Cancel
                 </Button>
-                <Button onClick={handlePrint} className="no-print" variant='outlined' style={{margin: '0 4px'}}>
+                <Button onClick={handlePrint} variant="outlined" className="print-button">
                     Print
                 </Button>
             </div>
             <div>
-                {periods.map(periodKey => {
+                {getPeriods().map(periodKey => {
                     const periodStart = view === 'week'
                         ? moment(periodKey).startOf('week').toDate()
                         : moment(periodKey).startOf('month').toDate();
-                    
-                    const periodEnd = view === 'week'
-                        ? moment(periodKey).endOf('week').toDate()
-                        : moment(periodKey).endOf('month').toDate();
                     
                     const periodEvents = processEvents().filter(event => {
                         if (view === 'week') {
@@ -191,12 +135,9 @@ const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
                             return moment(event.start).format('YYYY-MM') === periodKey;
                         }
                     });
-    
+
                     return (
-                        <div 
-                            key={periodKey} 
-                            className="cal-container print-cal-page"
-                        >
+                        <div key={periodKey} className="cal-container print-cal-page">
                             <CustomToolbar 
                                 date={view === 'week'
                                     ? moment(periodKey).startOf('week').toDate()
@@ -205,19 +146,14 @@ const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
                                 view={view}
                             />
                             <Calendar
-                                localizer={localizer}
+                                date={periodStart}
                                 events={periodEvents}
+                                view={view}
                                 components={{
-                                    event: view === 'agenda' ? AgendaEventComponent : EventComponent
+                                    event: EventComponent
                                 }}
-                                startAccessor="start"
-                                endAccessor="end"
-                                defaultView={view}
-                                defaultDate={periodStart}
-                                toolbar={false}
                                 showAllEvents
-                                {...getTimeSlotProps()}
-                                length={30}
+                                dateRange={dateRange}
                             />
                         </div>
                     );
