@@ -11,7 +11,8 @@ import {
   MenuItem, 
   Checkbox, 
   ListItemText, 
-  Box 
+  Box, 
+  Alert
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -25,12 +26,31 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
   const [selectedDoctors, setSelectedDoctors] = useState([]);
   const [selectedTechnicians, setSelectedTechnicians] = useState([]);
   const [selectedView, setSelectedView] = useState('month');
+  const [dateError, setDateError] = useState(false);
 
   const handlePreview = () => {
-    // Prepare the filter parameters
+    // Check if both dates are selected
+    if (!startDate || !endDate) {
+      setDateError('Please select both start and end dates');
+      return;
+    }
+
+    // Check if dates are valid
+    if (!startDate.isValid() || !endDate.isValid()) {
+      setDateError('Invalid date format');
+      return;
+    }
+
+    // Check date order
+    if (startDate.isAfter(endDate)) {
+      setDateError('Start date must be before end date');
+      return;
+    }
+    
+    setDateError(false);
     const filterParams = {
-      startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
-      endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
+      startDate: startDate.format('YYYY-MM-DD'),
+      endDate: endDate.format('YYYY-MM-DD'),
       labels: selectedLabels,
       doctors: selectedDoctors,
       technicians: selectedTechnicians,
@@ -58,12 +78,13 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
         <DialogTitle>Print Events</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
-            {/* View Selector */}
-            <FormControl fullWidth>
-              <InputLabel>View</InputLabel>
+            {/* View Selector with fixed styling */}
+            <FormControl fullWidth variant="outlined">
+              <InputLabel sx={{ textDecoration: 'none' }}>View</InputLabel>
               <Select
                 value={selectedView}
                 onChange={(e) => setSelectedView(e.target.value)}
+                label="View"
                 MenuProps={MenuProps}
               >
                 <MenuItem value="month">Month</MenuItem>
@@ -77,25 +98,46 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
               <DatePicker
                 label="Start Date"
                 value={startDate}
-                onChange={setStartDate}
-                slotProps={{ textField: { fullWidth: true } }}
+                onChange={(date) => {
+                  setStartDate(date);
+                  setDateError(false);
+                }}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true,
+                  } 
+                }}
               />
               <DatePicker
                 label="End Date"
                 value={endDate}
-                onChange={setEndDate}
-                slotProps={{ textField: { fullWidth: true } }}
+                onChange={(date) => {
+                  setEndDate(date);
+                  setDateError(false);
+                }}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true,
+                  } 
+                }}
               />
             </Box>
 
+            {dateError && (
+              <Alert severity="error" onClose={() => setDateError(false)}>
+                {dateError}
+              </Alert>
+            )}
+
             {/* Labels Selector */}
-            <FormControl fullWidth>
-              <InputLabel>Event Labels</InputLabel>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel sx={{ textDecoration: 'none' }}>Event Labels</InputLabel>
               <Select
                 multiple
                 value={selectedLabels}
                 onChange={(e) => setSelectedLabels(e.target.value)}
                 renderValue={(selected) => selected.map(label => label.label).join(', ')}
+                label="Event Labels"
                 MenuProps={MenuProps}
               >
                 {labels.map((labelObj) => (
@@ -108,13 +150,14 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
             </FormControl>
 
             {/* Doctors Selector */}
-            <FormControl fullWidth>
-              <InputLabel>Doctors</InputLabel>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel sx={{ textDecoration: 'none' }}>Doctors</InputLabel>
               <Select
                 multiple
                 value={selectedDoctors}
                 onChange={(e) => setSelectedDoctors(e.target.value)}
                 renderValue={(selected) => selected.map(doc => doc.name).join(', ')}
+                label="Doctors"
                 MenuProps={MenuProps}
               >
                 {doctors.map((doctor) => (
@@ -127,13 +170,14 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
             </FormControl>
 
             {/* Technicians Selector */}
-            <FormControl fullWidth>
-              <InputLabel>Technicians</InputLabel>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel sx={{ textDecoration: 'none' }}>Technicians</InputLabel>
               <Select
                 multiple
                 value={selectedTechnicians}
                 onChange={(e) => setSelectedTechnicians(e.target.value)}
                 renderValue={(selected) => selected.map(tech => tech.name).join(', ')}
+                label="Technicians"
                 MenuProps={MenuProps}
               >
                 {technicians.map((technician) => (
