@@ -22,7 +22,7 @@ const EventComponent = ({ event }) => {
     );
 };
 
-const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
+const PrintHandler = ({eventsList, viewMode, dateRange, close}) => {
     const {events: sampleEvents2, updateDateRange} = useScheduling();
     
     const events = eventsList || sampleEvents2;
@@ -163,4 +163,4 @@ const PrintCalendar = ({eventsList, viewMode, dateRange, close}) => {
     );
 };
 
-export default PrintCalendar;
+export default PrintHandler;

@@ -9,9 +9,9 @@ import {
 import Calendar from './Calendar';
 import PeopleDialog from './PeopleDialog';
 import PrintDialog from './PrintDialog';
-import PrintCalendar from './PrintCalendar';
 import { useEffect } from 'react';
 import axios from '../api/axios'
+import PrintHandler from './PrintHandler';
 function Schedule() {
   const [tabValue, setTabValue] = useState(0);
 
@@ -25,10 +25,17 @@ function Schedule() {
     if (filterParams) {
       const getEvents = async () => {
         const response = await axios.get(`/api/events/?start=${filterParams.startDate}&end=${filterParams.endDate}`)
-        const filteredEvents = response.data
+        const rawEvents = response.data
+        // First implement the event filtering based on label, doctor, and technician matches
+        const filteredEvents = rawEvents.filter(event => {
+            const hasMatchingLabel = !filterParams.labels.length || filterParams.labels.map(l=>l.value).includes(event.label);
+            const hasMatchingDoctor = !filterParams.doctors.length || filterParams.doctors.map(d=>d.id).includes(event.Doctor?.id);
+            const hasMatchingTechnician = !filterParams.technicians.length || 
+                event.Technicians.some(tech => filterParams.technicians.map(t=>t.id).includes(tech.id));
+
+            return hasMatchingLabel && hasMatchingDoctor && hasMatchingTechnician;
+        });        
         setEvents(filteredEvents)
-        console.log("FILTERED EVENTS")
-        console.log(filteredEvents)
       }
       getEvents()
     }
@@ -69,7 +76,7 @@ function Schedule() {
 
   return (
     isPrintCalendarOpen ? 
-      <PrintCalendar 
+      <PrintHandler
         eventsList={events} 
         viewMode={filterParams.view} 
         dateRange={{start: filterParams.startDate, end: filterParams.endDate}}

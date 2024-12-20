@@ -5,7 +5,7 @@ import Header from './components/Header';
 import Schedule from './components/Schedule';
 import Login from './components/Login';
 import { SchedulingProvider } from './components/SchedulingContext';
-import PrintCalendar from './components/PrintCalendar';
+import PrintHandler from './components/PrintHandler';
 
 function ProtectedRoute({ children, isLoading }) {
   const location = useLocation();
@@ -72,7 +72,7 @@ function App() {
               path="/print"
               element={
                 <ProtectedRoute isLoading={isLoading}>
-                  <PrintCalendar 
+                  <PrintHandler
                     dateRange={{
                       start: '2024-12-01',
                       end: '2024-12-31'
