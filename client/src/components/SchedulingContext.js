@@ -63,9 +63,9 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             setLoading(true);
             
             const [doctorsData, techniciansData, eventsData] = await Promise.all([
-                axios.get('/api/doctors'),
-                axios.get('/api/technicians'),
-                axios.get(`/api/events/?start=${dateRange.start}&end=${dateRange.end}`)
+                axios.get('/doctors'),
+                axios.get('/technicians'),
+                axios.get(`/events/?start=${dateRange.start}&end=${dateRange.end}`)
             ]);
 
             setDoctors(doctorsData.data);

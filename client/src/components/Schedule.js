@@ -24,7 +24,7 @@ function Schedule() {
   useEffect(()=>{
     if (filterParams) {
       const getEvents = async () => {
-        const response = await axios.get(`/api/events/?start=${filterParams.startDate}&end=${filterParams.endDate}`)
+        const response = await axios.get(`/events/?start=${filterParams.startDate}&end=${filterParams.endDate}`)
         const rawEvents = response.data
         // First implement the event filtering based on label, doctor, and technician matches
         const filteredEvents = rawEvents.filter(event => {

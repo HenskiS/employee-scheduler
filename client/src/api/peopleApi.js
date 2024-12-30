@@ -3,9 +3,9 @@ import axios from '../api/axios';
 export const fetchPeople = async () => {
   try {
     const [doctors, technicians, users] = await Promise.all([
-      axios.get('/api/doctors'),
-      axios.get('/api/technicians'),
-      axios.get('/api/users')
+      axios.get('/doctors'),
+      axios.get('/technicians'),
+      axios.get('/users')
     ]);
 
     return {

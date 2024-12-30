@@ -80,9 +80,9 @@ const MyCalendar = () => {
     try {
       const eventData = {...event, attendees: [event.technicianId] };
       if (event.id) {
-        await axios.put(`/api/events/${event.id}`, eventData);
+        await axios.put(`/events/${event.id}`, eventData);
       } else {
-        await axios.post('/api/events', eventData);
+        await axios.post('/events', eventData);
       }
       refreshData();
       handleCloseDialog();

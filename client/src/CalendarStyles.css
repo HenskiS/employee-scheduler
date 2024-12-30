@@ -28,3 +28,7 @@
     background-color: transparent !important;
     color: inherit !important;
 }
+
+.rbc-events-container {
+    margin-right: 0px !important;
+}

@@ -1,3 +1,9 @@
+/* 
+This my print handler component for displaying events on a calendar and printing them.
+However, sometimes it will only show one month when it should show two.
+For instance, if I select november 18th to december 15th, it only shows november, not december.
+Please locate the issue and output the code I need to changeSectionValueFormat.
+*/
 import React from 'react';
 import moment from 'moment';
 import Calendar from './CustomPrintCalendar';
@@ -86,13 +92,17 @@ const PrintHandler = ({eventsList, viewMode, dateRange, close}) => {
             while (current.isSameOrBefore(endDate)) {
                 if (view === 'month' || view === 'agenda') {
                     periods.push(current.format('YYYY-MM'));
-                    current.add(1, 'month');
+                    const nextMonth = current.clone();
+                    // Set to first day of next month
+                    nextMonth.add(1, 'month').startOf('month');
+                    current = nextMonth;
                 } else {
                     periods.push(current.startOf('week').format('YYYY-MM-DD'));
                     current.add(1, 'week');
                 }
             }
-            return periods;
+
+            return periods;           
         }
     };
 

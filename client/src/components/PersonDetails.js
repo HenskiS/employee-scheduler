@@ -104,9 +104,9 @@ const PersonDetails = ({
       let response;
 
       if (isAdding) {
-        response = await axios.post(`/api/${personTypeEndpoint}`, dataToSend);
+        response = await axios.post(`/${personTypeEndpoint}`, dataToSend);
       } else {
-        response = await axios.put(`/api/${personTypeEndpoint}/${dataToSend.id}`, dataToSend);
+        response = await axios.put(`/${personTypeEndpoint}/${dataToSend.id}`, dataToSend);
       }
 
       setSuccessMessage(`Successfully ${isAdding ? 'added' : 'updated'} ${formData.name}`);
@@ -128,7 +128,7 @@ const PersonDetails = ({
       
       try {
         const personTypeEndpoint = PERSON_TYPES[personType];
-        await axios.delete(`/api/${personTypeEndpoint}/${formData.id}`);
+        await axios.delete(`/${personTypeEndpoint}/${formData.id}`);
         setSuccessMessage(`Successfully deleted ${formData.name}`);
         onDelete(formData.id);
       } catch (err) {

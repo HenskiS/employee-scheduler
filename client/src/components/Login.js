@@ -11,7 +11,7 @@ function Login({ onLoginSuccess }) {
     e.preventDefault();
     console.log('Login form submitted');
     try {
-      const response = await axios.post('/api/users/login', { username, password });
+      const response = await axios.post('/users/login', { username, password });
       console.log('Login API response:', response);
       localStorage.setItem('token', response.data.token);
       // console.log('Token set in localStorage');
