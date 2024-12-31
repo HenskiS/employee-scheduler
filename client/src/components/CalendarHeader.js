@@ -6,6 +6,12 @@ import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import moment from 'moment';
 
 const CalendarHeader = ({ view, onViewChange, selectedDate, onDateChange }) => {
+  const handleDateChange = (newDate) => {
+    // Only call onDateChange if the date is valid
+    if (moment.isMoment(newDate) && newDate.isValid()) {
+      onDateChange(newDate.toDate());
+    }
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
@@ -34,10 +40,20 @@ const CalendarHeader = ({ view, onViewChange, selectedDate, onDateChange }) => {
         <DatePicker
           label="Select Date"
           value={moment(selectedDate)}
-          onChange={(newDate) => onDateChange(newDate.toDate())}
-          renderInput={(params) => <TextField {...params} size="small" sx={{ width: 150 }} />}
+          onChange={handleDateChange}
+          size="small"
+          sx={{ width: 150 }}
+          slotProps={{
+            textField: {
+              // Prevent invalid direct text input
+              onKeyDown: (e) => {
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                  e.stopPropagation();
+                }
+              }
+            }
+          }}
         />
-
       </Box>
     </LocalizationProvider>
   );

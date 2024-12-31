@@ -19,6 +19,7 @@ const MyCalendar = () => {
   const [newEvent, setNewEvent] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { colorMap } = useScheduling();
+  const [currentView, setCurrentView] = useState('day'); // cal view (day/agenda)
 
   // Modified to handle both job numbers and technician resources
   useEffect(() => {
@@ -91,7 +92,32 @@ const MyCalendar = () => {
     }
   };
 
-  // Modified to create multiple events for each technician assignment
+  const handleViewChange = (newView) => {
+    setCurrentView(newView);
+  };
+
+  const handleNavigate = (date, view, action) => {
+    if (view === 'agenda') {
+      let newDate = selectedDate;
+      switch (action) {
+        case 'PREV':
+          newDate = moment(date).subtract(1, 'day').toDate();
+          break;
+        case 'NEXT':
+          newDate = moment(date).add(1, 'day').toDate();
+          break;
+        case 'TODAY':
+          newDate = new Date();
+          break;
+        default:
+          newDate = date;
+      }
+      setSelectedDate(newDate);
+    } else {
+      setSelectedDate(date);
+    }
+  };
+
   const processEvents = () => {
     return events.flatMap(event => {
       if (view === "jobs") {
@@ -178,15 +204,17 @@ const MyCalendar = () => {
         }}
         startAccessor="start"
         endAccessor="end"
-        defaultView="day"
+        view={currentView}
         views={['day', 'agenda']}
+        onView={handleViewChange}
+        onNavigate={handleNavigate}
         step={60}
         length={0}
         timeslots={1}
         min={new Date(2024, 0, 1, 7, 0, 0)}
         max={new Date(2024, 0, 1, 21, 0, 0)}
         date={selectedDate}
-        onNavigate={(date) => setSelectedDate(date)}
+        //onNavigate={(date) => setSelectedDate(date)}
         resources={resources}
         resourceIdAccessor="id"
         resourceTitleAccessor="title"
