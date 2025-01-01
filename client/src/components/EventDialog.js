@@ -9,15 +9,14 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
-  Chip,
-  Divider,
-  Autocomplete
+  Autocomplete,
+  FormHelperText,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
-import axios from '../api/axios'
+import axios from '../api/axios';
 import { useScheduling } from './SchedulingContext';
 import RecurringEventForm from './RecurringEventForm';
 import TechnicianSelector from './TechnicianSelector';
@@ -40,6 +39,12 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     DoctorId: null
   });
 
+  const [errors, setErrors] = useState({
+    name: '',
+    startTime: '',
+    endTime: ''
+  });
+
   useEffect(() => {
     if (event) {
       setFormData({
@@ -47,6 +52,12 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
         startTime: moment(event.startTime),
         endTime: moment(event.endTime),
         label: event.label ?? 'None'
+      });
+      // Clear errors when editing existing event
+      setErrors({
+        name: '',
+        startTime: '',
+        endTime: ''
       });
     } else if (newEvent) {
       setFormData({
@@ -60,39 +71,75 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     }
   }, [event, newEvent]);
 
+  const validateForm = () => {
+    const newErrors = {
+      name: '',
+      startTime: '',
+      endTime: ''
+    };
+    let isValid = true;
+
+    // Validate name
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+      isValid = false;
+    }
+
+    // Validate start time
+    if (!formData.startTime || !formData.startTime.isValid()) {
+      newErrors.startTime = 'Valid start time is required';
+      isValid = false;
+    }
+
+    // Validate end time
+    if (!formData.endTime || !formData.endTime.isValid()) {
+      newErrors.endTime = 'Valid end time is required';
+      isValid = false;
+    }
+
+    // Validate end time is after start time
+    if (formData.startTime && formData.endTime && 
+        formData.startTime.isValid() && formData.endTime.isValid() && 
+        formData.endTime.isSameOrBefore(formData.startTime)) {
+      newErrors.endTime = 'End time must be after start time';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    console.log(`name: ${name}, value: ${value}`)
-    //if (name === "technicians") setFormData({...formData, technicians: technicians.push(value)})
-    // console.log(`${name}: ${value}`)
-    //else 
     setFormData({ ...formData, [name]: value });
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
   };
 
   const handleDateChange = (name) => (date) => {
     setFormData({ ...formData, [name]: date });
+    // Clear error when date is changed
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
   };
 
   const handleCheckboxChange = (e) => {
     const { name, checked } = e.target;
-    setFormData({ ...formData, [name]: checked? true : false });
-    console.log(formData)
+    setFormData({ ...formData, [name]: checked });
   };
-  
-  const handleTechDelete = (e) => {
-    //const { name, checked } = e.target;
-    console.log("Tech delete...")
-    //setFormData({ ...formData, [name]: checked? true : false });
-  };
-
 
   const handleSubmit = () => {
-    onSave({
-      ...formData,
-      startTime: formData.startTime.toISOString(),
-      endTime: formData.endTime.toISOString(),
-    });
-    onClose();
+    if (validateForm()) {
+      onSave({
+        ...formData,
+        startTime: formData.startTime.toISOString(),
+        endTime: formData.endTime.toISOString(),
+      });
+      onClose();
+    }
   };
 
   const handleDelete = async () => {
@@ -110,11 +157,9 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   };
 
   const handleSave = (rrule) => {
-    console.log(`New rrule: ${rrule}`);
-    if (newEvent) setFormData({ ...formData, rule: rrule })
-    else setFormData({ ...formData, RecurrenceRule: {...formData.RecurrenceRule, rule: rrule}})
-  }
-
+    if (newEvent) setFormData({ ...formData, rule: rrule });
+    else setFormData({ ...formData, RecurrenceRule: {...formData.RecurrenceRule, rule: rrule}});
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
@@ -130,6 +175,9 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             fullWidth
             value={formData.name}
             onChange={handleInputChange}
+            error={!!errors.name}
+            helperText={errors.name}
+            required
           />
           <TextField
             margin="dense"
@@ -147,7 +195,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             label="Doctor"
             options={doctors}
             getOptionLabel={option => option.name}
-            value={formData.DoctorId? doctors.filter(doc=>doc.id===formData.DoctorId)[0] : null}
+            value={formData.DoctorId ? doctors.filter(doc => doc.id === formData.DoctorId)[0] : null}
             onChange={(event, newValue) => {
               handleInputChange({
                 target: { name: 'DoctorId', value: newValue ? newValue.id : null }
@@ -164,21 +212,43 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0px' }}>
-          <DateTimePicker
-            label="Start"
-            value={formData.startTime}
-            onChange={handleDateChange('startTime')}
-          />
-          <DateTimePicker
-            label="End"
-            value={formData.endTime}
-            onChange={handleDateChange('endTime')}
-          />
+            <div>
+              <DateTimePicker
+                label="Start"
+                value={formData.startTime}
+                onChange={handleDateChange('startTime')}
+                slotProps={{
+                  textField: {
+                    required: true,
+                    error: !!errors.startTime,
+                  }
+                }}
+              />
+              {errors.startTime && (
+                <FormHelperText error>{errors.startTime}</FormHelperText>
+              )}
+            </div>
+            <div>
+              <DateTimePicker
+                label="End"
+                value={formData.endTime}
+                onChange={handleDateChange('endTime')}
+                slotProps={{
+                  textField: {
+                    required: true,
+                    error: !!errors.endTime,
+                  }
+                }}
+              />
+              {errors.endTime && (
+                <FormHelperText error>{errors.endTime}</FormHelperText>
+              )}
+            </div>
           </div>
           <FormControlLabel
             control={
               <Checkbox
-                checked={formData.allDay? true:false}
+                checked={formData.allDay}
                 onChange={handleCheckboxChange}
                 name="allDay"
               />
@@ -188,7 +258,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
           <FormControlLabel
             control={
               <Checkbox
-                checked={formData.isRecurring? true:false}
+                checked={formData.isRecurring}
                 onChange={handleCheckboxChange}
                 name="isRecurring"
               />
@@ -196,52 +266,50 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
             label="Recurring"
           />
           {formData.isRecurring && 
-            <RecurringEventForm startDate={formData.startTime} 
-                                rrule={formData.RecurrenceRule?.rule ? formData.RecurrenceRule.rule : null} 
-                                onChange={handleSave} />}
-          {/*<div className='dialog-split'>
-            <div className='left'>*/}
-              <TextField
-                select
-                margin="dense"
-                name="label"
-                label="Label"
-                fullWidth
-                value={formData.label}
-                onChange={handleInputChange}
-              >
-              {labels.map((label) => (
-                <MenuItem key={label.value} value={label.value}>
-                  <div style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    borderRadius: '50%', 
-                    backgroundColor: label.color,
-                    marginRight: '8px',
-                    display: 'inline-block'
-                  }} />
-                  {label.label}
-                </MenuItem>
-              ))}
-              </TextField>
-              <TextField
-                select
-                margin="dense"
-                name="jobNumber"
-                label="Job"
-                fullWidth
-                value={formData.jobNumber}
-                onChange={handleInputChange}
-              >
-                {throughThirty.map((num) => (
-                  <MenuItem key={num} value={num}>
-                    {num}
-                  </MenuItem>
-                ))}
-              </TextField>
-              {/*newEvent? null:<Button variant='outlined'>Technicians</Button>*/}
-            {/*</div>
-          </div>*/}
+            <RecurringEventForm 
+              startDate={formData.startTime}
+              rrule={formData.RecurrenceRule?.rule ? formData.RecurrenceRule.rule : null}
+              onChange={handleSave}
+            />
+          }
+          <TextField
+            select
+            margin="dense"
+            name="label"
+            label="Label"
+            fullWidth
+            value={formData.label}
+            onChange={handleInputChange}
+          >
+            {labels.map((label) => (
+              <MenuItem key={label.value} value={label.value}>
+                <div style={{ 
+                  width: '12px', 
+                  height: '12px', 
+                  borderRadius: '50%', 
+                  backgroundColor: label.color,
+                  marginRight: '8px',
+                  display: 'inline-block'
+                }} />
+                {label.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            margin="dense"
+            name="jobNumber"
+            label="Job"
+            fullWidth
+            value={formData.jobNumber}
+            onChange={handleInputChange}
+          >
+            {throughThirty.map((num) => (
+              <MenuItem key={num} value={num}>
+                {num}
+              </MenuItem>
+            ))}
+          </TextField>
         </DialogContent>
         <DialogActions>
           {event && (
@@ -258,4 +326,5 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     </LocalizationProvider>
   );
 }
+
 export default EventDialog;

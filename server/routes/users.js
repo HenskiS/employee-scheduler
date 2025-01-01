@@ -7,14 +7,21 @@ const jwt = require('jsonwebtoken');
 
 // Register a new user
 router.post('/', async (req, res) => {
+  const transaction = await User.sequelize.transaction();
   try {
     const { name, email, username, password } = req.body;
     const hashedPassword = await hashPassword(password);
-    const user = await User.create({ name, email, username, password: hashedPassword });
+    const user = await User.create(
+      { name, email, username, password: hashedPassword },
+      { transaction }
+    );
     const userObject = user.toJSON();
+    
+    await transaction.commit();
     const { password: _, ...userWithoutPassword } = userObject;
     res.status(201).json(userWithoutPassword);
   } catch (error) {
+    await transaction.rollback();
     res.status(400).json({ error: error.message });
   }
 });

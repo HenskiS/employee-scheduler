@@ -34,11 +34,7 @@ const Event = sequelize.define('Event', {
   createdBy: {
     type: DataTypes.INTEGER,
     allowNull: true
-  },
-  createdAt: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
   }
-});
+}, {paranoid: true, timestamps: true});
 
 module.exports = Event;
