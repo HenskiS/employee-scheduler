@@ -29,6 +29,10 @@ const Doctor = sequelize.define('Doctor', {
   phoneNumber: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 });
 

@@ -21,7 +21,8 @@ const FIELD_CONFIGS = {
     { key: 'address2', label: 'Address2' },
     { key: 'city', label: 'City' },
     { key: 'state', label: 'State' },
-    { key: 'zip', label: 'Zip' }
+    { key: 'zip', label: 'Zip' },
+    { key: 'notes', label: 'Notes', multiline: true, rows: 4 }
   ],
   1: [ // Technicians
     { key: 'name', label: 'Name', required: true },
@@ -175,7 +176,7 @@ const PersonDetails = ({
         </Alert>
       )}
       
-      {fields.map(({ key, label, required, type }) => (
+      {fields.map(({ key, label, required, type, multiline, rows }) => (
         <TextField
           key={key}
           fullWidth
@@ -189,6 +190,8 @@ const PersonDetails = ({
           error={!!validationErrors[key]}
           helperText={validationErrors[key]}
           type={type || 'text'}
+          multiline={multiline}
+          rows={rows}
           sx={{
             mb: 2,
             '& .MuiInputBase-input.Mui-readOnly': {
