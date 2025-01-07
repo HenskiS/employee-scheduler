@@ -180,7 +180,7 @@ const MyCalendar = () => {
   };
 
   return (
-    <div className='cal-container'>
+    <div className='home-cal'>
       <CalendarHeader 
         view={view}
         onViewChange={(newView) => setView(newView)}

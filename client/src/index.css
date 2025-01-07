@@ -92,11 +92,23 @@ td:hover {
 }
 
 .cal-container {
-  /* min-height: 80vh; */
   display: flex;
   flex-direction: column;
   margin-bottom: 20px;
-};
+}
+.home-cal {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  /* height: calc(100vh - 140px) !important; */
+  overflow: hidden;
+}
+/* Apply height constraint only on larger screens */
+@media screen and (min-height: 450px) {
+  .home-cal {
+    height: calc(100vh - 140px) !important;
+  }
+}
 
 .rbc-day-slot .rbc-events-container {
   margin-right: 0px !important;
