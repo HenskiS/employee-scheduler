@@ -12,7 +12,10 @@ import {
   Checkbox, 
   ListItemText, 
   Box, 
-  Alert
+  Alert,
+  FormGroup,
+  FormControlLabel,
+  Typography
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -27,6 +30,36 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
   const [selectedTechnicians, setSelectedTechnicians] = useState([]);
   const [selectedView, setSelectedView] = useState('month');
   const [dateError, setDateError] = useState(false);
+  
+  // New state for display options
+  const [displayOptions, setDisplayOptions] = useState({
+    showDescription: true,
+    showLabel: true,
+    showTechnicians: true,
+    doctorInfo: {
+      showName: true,
+      showAddress: false,
+      showPhone: false,
+    }
+  });
+
+  const handleDisplayOptionChange = (option) => {
+    if (option.startsWith('doctor.')) {
+      const field = option.split('.')[1];
+      setDisplayOptions(prev => ({
+        ...prev,
+        doctorInfo: {
+          ...prev.doctorInfo,
+          [field]: !prev.doctorInfo[field]
+        }
+      }));
+    } else {
+      setDisplayOptions(prev => ({
+        ...prev,
+        [option]: !prev[option]
+      }));
+    }
+  };
 
   const handlePreview = () => {
     // Check if both dates are selected
@@ -54,7 +87,8 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
       labels: selectedLabels,
       doctors: selectedDoctors,
       technicians: selectedTechnicians,
-      view: selectedView
+      view: selectedView,
+      displayOptions
     };
 
     onPrint(filterParams);
@@ -128,6 +162,72 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
                 {dateError}
               </Alert>
             )}
+
+            {/* Display Options */}
+            <Box sx={{ mt: 1, mb: 1 }}>
+              <Typography sx={{ fontSize: '1rem', mb: 0.5 }}>Display Options</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={displayOptions.showDescription}
+                        onChange={() => handleDisplayOptionChange('showDescription')}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '1rem' }}>Description</Typography>}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={displayOptions.showLabel}
+                        onChange={() => handleDisplayOptionChange('showLabel')}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '1rem' }}>Label</Typography>}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={displayOptions.showTechnicians}
+                        onChange={() => handleDisplayOptionChange('showTechnicians')}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '1rem' }}>Technicians</Typography>}
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: '1rem' }}>Doctor Info:</Typography>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={displayOptions.doctorInfo.showName}
+                        onChange={() => handleDisplayOptionChange('doctor.showName')}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '1rem' }}>Name</Typography>}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={displayOptions.doctorInfo.showAddress}
+                        onChange={() => handleDisplayOptionChange('doctor.showAddress')}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '1rem' }}>Address</Typography>}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={displayOptions.doctorInfo.showPhone}
+                        onChange={() => handleDisplayOptionChange('doctor.showPhone')}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '1rem' }}>Phone</Typography>}
+                  />
+                </Box>
+              </Box>
+            </Box>
 
             {/* Labels Selector */}
             <FormControl fullWidth variant="outlined">

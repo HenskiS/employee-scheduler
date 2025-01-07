@@ -1,54 +1,67 @@
-/* 
-This my print handler component for displaying events on a calendar and printing them.
-However, sometimes it will only show one month when it should show two.
-For instance, if I select november 18th to december 15th, it only shows november, not december.
-Please locate the issue and output the code I need to changeSectionValueFormat.
-*/
 import React from 'react';
 import moment from 'moment';
 import Calendar from './CustomPrintCalendar';
 import { useScheduling } from './SchedulingContext';
-import { useEffect } from 'react';
 import { Button } from '@mui/material';
 
-const EventComponent = ({ event }) => {
-    const { colorMap } = useScheduling();
-    const backgroundColor = colorMap[event.label] || '#3174ad';
 
-    const startTime = moment(event.start).format('h:mma');
-    const endTime = moment(event.end).format('h:mma');
-    const timeRange = `${startTime}–${endTime}`;
+const PrintHandler = ({events = [], view = "month", dateRange, close, filterParams}) => {
+    const { colorMap, labels } = useScheduling();
+
+    const EventComponent = ({ event }) => {
+        const backgroundColor = colorMap[event.label] || '#3174ad';
     
-    return (
-        <div className="print-event-text-container">
-            <div style={{color: backgroundColor}} className="print-event-text">
-                {event.allDay? '[All Day]' : timeRange} {event.title}
+        const startTime = moment(event.start).format('h:mma');
+        const endTime = moment(event.end).format('h:mma');
+        const timeRange = `${startTime}–${endTime}`;
+        const displayOptions = filterParams.displayOptions || {};
+        const doctorOptions = displayOptions.doctorInfo || {};
+        const doctor = event.Doctor || {};
+        
+        return (
+            <div className="print-event-text-container">
+                <div style={{color: backgroundColor}} className="print-event-text">
+                    {event.allDay ? '[All Day]' : timeRange} <b>{event.title}</b>
+                    {displayOptions?.showDescription && event.description && (
+                        <div className="print-event-description">
+                            {event.description}
+                        </div>
+                    )}
+                    {event.Doctor && Object.values(doctorOptions).some(Boolean) && (
+                        <>
+                            <div className="print-event-description">{doctorOptions.showName && doctor?.name} </div>
+                            <div className="print-event-description">{doctorOptions.showAddress && [
+                                    doctor?.address1,
+                                    doctor?.address2,
+                                    doctor?.city,
+                                    doctor?.zip
+                                ].filter(Boolean).join(', ')}</div>
+                            <div className="print-event-description">{doctorOptions.showPhone && doctor?.phone}</div>   
+                        </>           
+                    )}
+                    {event.Technicians && displayOptions?.showTechnicians && (
+                        <div className="print-event-description">
+                            {event.Technicians.map(t=>t.name).join(', ')}
+                        </div>
+                    )}
+                    {displayOptions.showLabel && event.label && event.label !== 'none' && (
+                        <div className="print-event-description">
+                            {labels.find(l=>l.value===event.label)?.label}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
-    );
-};
-
-const PrintHandler = ({eventsList, viewMode, dateRange, close}) => {
-    const {events: sampleEvents2, updateDateRange} = useScheduling();
-    
-    const events = eventsList || sampleEvents2;
-    const view = viewMode || "month";
+        );
+    };
 
     const processEvents = () => {
         return events.flatMap(event => ({
             title: event.name,
             start: new Date(event.startTime),
             end: new Date(event.endTime),
-            allDay: event.allDay,
-            label: event.label
+            ...event
         }));
     };
-
-    useEffect(() => {
-        const start = moment('2024-10-01').startOf('month').toISOString();
-        const end = moment('2024-12-31').endOf('month').toISOString();
-        updateDateRange(start, end);
-    }, []);
 
     const CustomToolbar = ({ date, view }) => {
         if (view === 'month') {
@@ -164,6 +177,7 @@ const PrintHandler = ({eventsList, viewMode, dateRange, close}) => {
                                 }}
                                 showAllEvents
                                 dateRange={dateRange}
+                                filterParams={filterParams}
                             />
                         </div>
                     );

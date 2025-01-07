@@ -8,10 +8,11 @@ const Calendar = ({
     view = 'month',
     components = {},
     showAllEvents = true,
-    dateRange = null
+    dateRange = null,
+    filterParams = {}
   }) => {
 
-    const { colorMap } = useScheduling();
+    const { colorMap, labels } = useScheduling();
 
     const isDateInRange = (date) => {
         if (!dateRange) return true;
@@ -190,7 +191,48 @@ const Calendar = ({
                           className="agenda-event-color-indicator"
                           style={{ backgroundColor: colorMap[event.label] || '#3174ad' }}
                         />
-                        <span className="agenda-event-title">{event.title}</span>
+                        <div className="agenda-event-details">
+                          <span className="agenda-event-title">{event.title}</span>
+                          {filterParams.displayOptions?.showDescription && event.description && (
+                            <div className="agenda-event-description">
+                              {event.description}
+                            </div>
+                          )}
+                          {event.Doctor && filterParams.displayOptions?.doctorInfo && (
+                            <>
+                              {filterParams.displayOptions.doctorInfo.showName && (
+                                <div className="agenda-event-doctor-name">
+                                  {event.Doctor.name}
+                                </div>
+                              )}
+                              {filterParams.displayOptions.doctorInfo.showAddress && (
+                                <div className="agenda-event-doctor-address">
+                                  {[
+                                    event.Doctor.address1,
+                                    event.Doctor.address2,
+                                    event.Doctor.city,
+                                    event.Doctor.zip
+                                  ].filter(Boolean).join(', ')}
+                                </div>
+                              )}
+                              {filterParams.displayOptions.doctorInfo.showPhone && (
+                                <div className="agenda-event-doctor-phone">
+                                  {event.Doctor.phone}
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {filterParams.displayOptions?.showTechnicians && event.Technicians && (
+                            <div className="agenda-event-label">
+                              {event.Technicians.map(t=>t.name).join(', ')}
+                            </div>
+                          )}
+                          {filterParams.displayOptions?.showLabel && event.label && event.label !== 'none' && (
+                            <div className="agenda-event-label">
+                              {labels?.find(l => l.value === event.label)?.label}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

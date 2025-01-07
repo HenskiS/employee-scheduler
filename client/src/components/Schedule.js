@@ -77,10 +77,11 @@ function Schedule() {
   return (
     isPrintCalendarOpen ? 
       <PrintHandler
-        eventsList={events} 
-        viewMode={filterParams.view} 
+        events={events} 
+        view={filterParams.view} 
         dateRange={{start: filterParams.startDate, end: filterParams.endDate}}
         close={handleClosePrintCalendar}
+        filterParams={filterParams}
       />
       :
       <div>

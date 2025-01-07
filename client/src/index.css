@@ -337,13 +337,15 @@ td:hover {
 
 .agenda-event-color-indicator {
   width: 4px;
-  height: 24px;
+  /* height: 24px; */
+  align-self: stretch;
   border-radius: 2px;
   flex-shrink: 0;
 }
 
 .agenda-event-title {
   flex-grow: 1;
+  font-weight: 600;
 }
 /* @media print {
   .calendar-container {
