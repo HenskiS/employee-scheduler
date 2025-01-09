@@ -179,6 +179,7 @@ td:hover {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  box-shadow: 0 0 0 1px #ddd;
 }
 
 .calendar-grid.month-view {
@@ -190,8 +191,9 @@ td:hover {
 }
 
 .calendar-day {
-  border-right: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
+  box-shadow: 0 0 0 1px #ddd;
+  /* border-right: 1px solid #ddd;
+  border-bottom: 1px solid #ddd; */
   width: 100%;
   box-sizing: border-box;
 }
@@ -201,6 +203,8 @@ td:hover {
   padding: 4px;
   display: flex;
   flex-direction: column;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .calendar-date {
@@ -246,6 +250,7 @@ td:hover {
 .print-controls {
   display: flex;
   justify-content: center;
+  gap: 8px;
   margin: 10px 0;
   padding: 5px;
 }
@@ -306,6 +311,8 @@ td:hover {
 
 .agenda-row {
   border-bottom: 1px solid #f0f0f0;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .agenda-date {
@@ -375,3 +382,29 @@ td:hover {
     page-break-inside: avoid;
   }
 } */
+
+/* Event container styles */
+/* .print-event-text {
+  padding: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+} */
+
+/* .print-event-description {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #666;
+} */
+
+/* Print-specific overrides */
+@media print {
+  .calendar-cell {
+    /* height: auto !important; */
+    overflow: visible !important;
+  }
+  
+  .print-event-text-container {
+    overflow: visible !important;
+  }
+}

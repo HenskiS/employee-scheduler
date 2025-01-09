@@ -9,6 +9,7 @@ lerna-debug.log*
 
 Anthropic prompt.txt
 
+client/build/*
 server/database.sqlite
 
 *.sqlite
