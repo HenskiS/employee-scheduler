@@ -20,7 +20,10 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
         
         return (
             <div className="print-event-text-container">
-                <div style={{color: backgroundColor}} className="print-event-text">
+                <div style={{ // color: backgroundColor for colored text, below for color bars
+                    borderLeft: `3px solid ${backgroundColor}`,
+                    paddingLeft: '4px'
+                }} className="print-event-text">
                     {event.allDay ? '[All Day]' : timeRange} <b>{event.title}</b>
                     {displayOptions?.showDescription && event.description && (
                         <div className="print-event-description">
