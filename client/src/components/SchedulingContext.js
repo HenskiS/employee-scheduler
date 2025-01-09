@@ -1,18 +1,17 @@
-// I want this to fetch all events in a given month. If updateDateRange is called, it should check if that date is in the month already fetched, and if not, fetch that month.
-// SchedulingContext.js
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from '../api/axios';
 import moment from 'moment';
 
 const SchedulingContext = createContext();
 
-const DEFAULT_REFRESH_INTERVAL = 30 * 1000 // 30 seconds
+const DEFAULT_REFRESH_INTERVAL = 30 * 1000; // 30 seconds
 
 const throughThirty = [
     "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
     "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
     "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"
-  ];
+];
+
 const labels = [
     { label: 'None', value: 'none', color: 'rgba(145,180,232,255)' },
     { label: 'Available', value: 'available', color: 'rgba(255,149,0,255)' },
@@ -29,6 +28,7 @@ const labels = [
     { label: 'Trainee', value: 'trainee', color: 'rgba(247,241,54,255)' },
     { label: 'Waitlist', value: 'waitlist', color: 'rgba(194,0,0,255)' }
 ];
+
 const colorMap = {
     none: 'rgba(145,180,232,255)',
     available: 'rgba(255,149,0,255)',
@@ -54,11 +54,10 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         start: moment().startOf('month').toISOString(),
         end: moment().endOf('month').toISOString()
     });
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     const fetchData = useCallback(async () => {
-        // console.log(`Date range: ${JSON.stringify(dateRange)}`)
         try {
             setLoading(true);
             
@@ -80,27 +79,27 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     }, [dateRange]);
 
     useEffect(() => {
-        fetchData();
-
-        const intervalId = setInterval(fetchData, refreshInterval);
-
-        return () => clearInterval(intervalId);
+        // Only fetch if we have a token
+        if (localStorage.getItem('token')) {
+            fetchData();
+            const intervalId = setInterval(fetchData, refreshInterval);
+            return () => clearInterval(intervalId);
+        }
     }, [fetchData, refreshInterval]);
 
     const refreshData = useCallback(() => {
-        fetchData();
+        if (localStorage.getItem('token')) {
+            fetchData();
+        }
     }, [fetchData]);
 
     const updateDateRange = useCallback((start, end) => {
+        if (!localStorage.getItem('token')) return;
+        
         const newStart = moment(start).startOf('day');
         const newEnd = moment(end).endOf('day');
         if (newStart.isBefore(dateRange.start) || newEnd.isAfter(dateRange.end)) {
-            const newMonth = newStart.clone().startOf('month');
-            /*setDateRange({
-                start: newMonth.clone().startOf('month').toISOString(),
-                end: newMonth.clone().endOf('month').toISOString()
-            });*/
-            setDateRange({start, end})
+            setDateRange({start, end});
         }   
     }, [dateRange]);
 

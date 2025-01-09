@@ -3,22 +3,49 @@ import { TextField, Button, Paper, Typography, Box } from '@mui/material';
 import axios from '../api/axios';
 
 function Login({ onLoginSuccess }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+  });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+    // Clear error when user starts typing
+    if (error) setError('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login form submitted');
+    setIsLoading(true);
+    setError('');
+
     try {
-      const response = await axios.post('/users/login', { username, password });
-      console.log('Login API response:', response);
+      // Basic validation
+      if (!formData.username || !formData.password) {
+        throw new Error('Please fill in all fields');
+      }
+
+      const response = await axios.post('/users/login', formData);
+      
+      // Store token securely
       localStorage.setItem('token', response.data.token);
-      // console.log('Token set in localStorage');
+      
+      // Clear sensitive data
+      setFormData({ username: '', password: '' });
+      
+      // Notify parent component of successful login
       onLoginSuccess();
+      
     } catch (err) {
-      console.error('Login error:', err);
-      setError('Invalid username or password');
+      const errorMessage = err.response?.data?.error || err.message || 'Login failed';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -30,24 +57,37 @@ function Login({ onLoginSuccess }) {
         </Typography>
         <form onSubmit={handleSubmit}>
           <TextField
+            name="username"
             label="Username"
             variant="outlined"
             fullWidth
             margin="normal"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={formData.username}
+            onChange={handleChange}
+            disabled={isLoading}
+            autoComplete="username"
           />
           <TextField
+            name="password"
             label="Password"
             type="password"
             variant="outlined"
             fullWidth
             margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={formData.password}
+            onChange={handleChange}
+            disabled={isLoading}
+            autoComplete="current-password"
           />
-          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
-            Login
+          <Button 
+            type="submit" 
+            variant="contained" 
+            color="primary" 
+            fullWidth 
+            sx={{ mt: 2 }}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Logging in...' : 'Login'}
           </Button>
           {error && (
             <Typography color="error" sx={{ mt: 2 }}>
