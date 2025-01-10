@@ -28,7 +28,7 @@ const PeopleDialog = ({ open, onClose }) => {
   const loadData = async () => {
     try {
       const data = await fetchPeople();
-      console.log('Fetched data:', data);
+      //console.log('Fetched data:', data);
       
       // If we have a selected person, find them in the new data
       if (selectedPerson) {

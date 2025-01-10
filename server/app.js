@@ -7,6 +7,7 @@ const doctorRoutes = require('./routes/doctors');
 const technicianRoutes = require('./routes/technicians');
 const userRoutes = require('./routes/users');
 const eventRoutes = require('./routes/events');
+const loggingMiddleware = require('./middleware/logging')
 
 require('./models');
 
@@ -14,6 +15,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(loggingMiddleware);
 
 // Serve static files from the React build directory
 // Note the path is now going up one level and into the client/build directory

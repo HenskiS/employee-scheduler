@@ -98,10 +98,30 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         
         const newStart = moment(start).startOf('day');
         const newEnd = moment(end).endOf('day');
-        if (newStart.isBefore(dateRange.start) || newEnd.isAfter(dateRange.end)) {
-            setDateRange({start, end});
-        }   
+
+        let expandedStart = moment(newStart.isBefore(dateRange.start) ? newStart : dateRange.start);
+        let expandedEnd = moment(newEnd.isAfter(dateRange.end) ? newEnd : dateRange.end);
+        const sixMonthsInDays = 180;
+        const daysDiff = expandedEnd.diff(expandedStart, 'days');     
+        // Don't allow a date range greater than 6 months
+        if (daysDiff > sixMonthsInDays) {
+            if (newStart.isBefore(dateRange.start)) {
+                expandedEnd = moment.min(expandedEnd, newStart.clone().add(sixMonthsInDays, 'days'));
+            }
+            if (newEnd.isAfter(dateRange.end)) {
+                expandedStart = moment.max(expandedStart, newEnd.clone().subtract(sixMonthsInDays, 'days'));
+            }
+        }
+        
+        if (!expandedStart.isSame(dateRange.start) || !expandedEnd.isSame(dateRange.end)) {
+            setDateRange({
+                start: expandedStart,
+                end: expandedEnd
+            });
+            console.log(`Expanded date range: ${expandedStart.format('YYYY-MM-DD')} to ${expandedEnd.format('YYYY-MM-DD')}`);
+        }
     }, [dateRange]);
+    
 
     return (
         <SchedulingContext.Provider value={{ 
