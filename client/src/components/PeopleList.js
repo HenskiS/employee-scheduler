@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, TextField, List, ListItem, ListItemText, Button } from '@mui/material';
 import { Search, Add } from '@mui/icons-material';
+import { useMediaQuery } from '@mui/material';
 
 const PeopleList = ({
   people,
@@ -13,9 +14,10 @@ const PeopleList = ({
   const filteredPeople = people.filter((person) =>
     person.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const isMobile = useMediaQuery('(max-width:800px)');
 
   return (
-    <Box sx={{ width: '30%', borderRight: 1, borderColor: 'divider', px: 2, display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ width: isMobile ? '70%' : '35%', borderRight: 1, borderColor: 'divider', px: 2, display: 'flex', flexDirection: 'column' }}>
       <TextField
         fullWidth
         variant="outlined"
@@ -25,7 +27,7 @@ const PeopleList = ({
         InputProps={{
           startAdornment: <Search sx={{ color: 'action.active', mr: 1 }} />,
         }}
-        sx={{ mb: 2, mt: 2 }}
+        sx={{ /* mb: 2, */ mt: 1 /* 2 */ }}
       />
       <List sx={{ flexGrow: 1, overflowY: 'auto' }}>
         {filteredPeople.map((person) => (

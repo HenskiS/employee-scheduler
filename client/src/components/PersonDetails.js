@@ -10,6 +10,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { Save, Edit, Delete } from '@mui/icons-material';
+import { useMediaQuery } from '@mui/material';
 import axios from '../api/axios';
 
 const FIELD_CONFIGS = {
@@ -55,6 +56,7 @@ const PersonDetails = ({
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+  const isMobile = useMediaQuery('(max-width:800px)');
 
   useEffect(() => {
     setFormData(person || {});
@@ -164,7 +166,7 @@ const PersonDetails = ({
   const fields = FIELD_CONFIGS[personType];
 
   return (
-    <Box sx={{ width: '40%', pl: 2, pr: 2, overflowY: 'auto' }}>
+    <Box sx={{ width: isMobile ? '100%' : '45%', pl: 2, pr: 2, overflowY: 'auto' }}>
       <Typography variant="h6" sx={{ mb: 2, mt: 2 }}>
         {isAdding ? `Add New ${PERSON_TYPES[personType].slice(0, -1)}` : formData.name}
       </Typography>
