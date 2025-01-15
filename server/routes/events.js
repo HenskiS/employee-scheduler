@@ -76,104 +76,118 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });*/
 // Get events in range
-router.get('/', authMiddleware, async (req, res) => {
+const fetchEvents = async (startDate, endDate) => {
+  // Validate date range
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    throw new Error('Invalid date range provided');
+  }
+
+  // Fetch all events in range and their recurrence rules
+  const events = await Event.findAll({
+    include: [
+      { 
+        model: Technician, 
+        through: { attributes: [] }
+      },
+      {
+        model: RecurrenceRule,
+        required: false
+      },
+      { model: Doctor}
+    ],
+    where: {
+      [Op.or]: [
+        // Events starting within the range
+        { startTime: { [Op.between]: [startDate, endDate] } },
+        // Recurring events that might have instances in the range
+        { '$RecurrenceRule.id$': { [Op.not]: null } }
+      ]
+    }
+  });
+
+  // Expand recurring events
+  return events.flatMap(event => {
+    const eventStart = new Date(event.startTime);
+    const eventEnd = new Date(event.endTime);
+    const eventDuration = eventEnd - eventStart;
+    
+    let instances = [];
+
+    // Include the original event if it's within the range
+    if (eventStart >= startDate && eventStart < endDate) {
+      instances.push({
+        ...event.toJSON(),
+        isOriginalEvent: true
+      });
+    }
+
+    // If it's a recurring event, add the recurrences
+    if (event.RecurrenceRule) {
+      try {
+        const rule = RRule.fromString(event.RecurrenceRule.rule);
+        const recurringInstances = rule.between(startDate, endDate);
+        
+        instances = [
+          ...instances,
+          ...recurringInstances.map(date => {
+            // Skip if this instance is the original event
+            if (date.getTime() === eventStart.getTime()) {
+              return null;
+            }
+            // set start time to event start time
+            const instanceStart = new Date(date);
+            instanceStart.setHours(eventStart.getHours());
+            instanceStart.setMinutes(eventStart.getMinutes());
+            instanceStart.setSeconds(eventStart.getSeconds());
+            instanceStart.setMilliseconds(eventStart.getMilliseconds());
+            
+            const instanceEnd = new Date(instanceStart.getTime() + eventDuration);
+            
+            return {
+              ...event.toJSON(),
+              startTime: instanceStart.toISOString(),
+              endTime: instanceEnd.toISOString(),
+              isRecurring: true
+            };
+          }).filter(Boolean) // Remove null entries
+        ];
+      } catch (error) {
+        console.error(`Error processing recurring event ${event.id}:`, error);
+      }
+    }
+
+    return instances;
+  });
+};
+
+// Function to be used by other modules (like refresh.js)
+const getEvents = async (start, end) => {
+  const startDate = new Date(start);
+  // Add one day to end date to include the full end date
+  const endDate = new Date(end);
+  endDate.setDate(endDate.getDate() + 1);
+
+  return await fetchEvents(startDate, endDate);
+};
+
+// Route handler
+const getEventsHandler = async (req, res) => {
   try {
     const { start, end } = req.query;
-
     const startDate = new Date(start);
-    // Add one day to end date to include the full end date
     const endDate = new Date(end);
     endDate.setDate(endDate.getDate() + 1);
 
-    // Validate date range
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      return res.status(400).json({ error: 'Invalid date range provided' });
-    }
-    
-    // Fetch all events in range and their recurrence rules
-    const events = await Event.findAll({
-      include: [
-        { 
-          model: Technician, 
-          through: { attributes: [] }
-        },
-        {
-          model: RecurrenceRule,
-          required: false
-        },
-        { model: Doctor}
-      ],
-      where: {
-        [Op.or]: [
-          // Events starting within the range
-          { startTime: { [Op.between]: [startDate, endDate] } },
-          // Recurring events that might have instances in the range
-          { '$RecurrenceRule.id$': { [Op.not]: null } }
-        ]
-      }
-    });
-
-    // Expand recurring events
-    const expandedEvents = events.flatMap(event => {
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
-      const eventDuration = eventEnd - eventStart;
-      
-      let instances = [];
-
-      // Include the original event if it's within the range
-      // Note: We use < endDate (not <=) because endDate is now the next day
-      if (eventStart >= startDate && eventStart < endDate) {
-        instances.push({
-          ...event.toJSON(),
-          isOriginalEvent: true
-        });
-      }
-
-      // If it's a recurring event, add the recurrences
-      if (event.RecurrenceRule) {
-        try {
-          const rule = RRule.fromString(event.RecurrenceRule.rule);
-          const recurringInstances = rule.between(startDate, endDate);
-          
-          instances = [
-            ...instances,
-            ...recurringInstances.map(date => {
-              // Skip if this instance is the original event
-              if (date.getTime() === eventStart.getTime()) {
-                return null;
-              }
-              // set start time to event start time
-              const instanceStart = new Date(date);
-              instanceStart.setHours(eventStart.getHours());
-              instanceStart.setMinutes(eventStart.getMinutes());
-              instanceStart.setSeconds(eventStart.getSeconds());
-              instanceStart.setMilliseconds(eventStart.getMilliseconds());
-              
-              const instanceEnd = new Date(instanceStart.getTime() + eventDuration);
-              
-              return {
-                ...event.toJSON(),
-                startTime: instanceStart.toISOString(),
-                endTime: instanceEnd.toISOString(),
-                isRecurring: true
-              };
-            }).filter(Boolean) // Remove null entries
-          ];
-        } catch (error) {
-          console.error(`Error processing recurring event ${event.id}:`, error);
-        }
-      }
-
-      return instances;
-    });
-
+    const expandedEvents = await fetchEvents(startDate, endDate);
     res.json(expandedEvents);
   } catch (error) {
     console.error('Error fetching events:', error);
     res.status(500).json({ error: 'An error occurred while fetching events' });
   }
-});
+};
+
+// Apply the route handler
+router.get('/', authMiddleware, getEventsHandler);
 
 // Get a specific event
 router.get('/:id', authMiddleware, async (req, res) => {
@@ -310,4 +324,4 @@ router.post('/:id/assign', authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {router, getEvents};

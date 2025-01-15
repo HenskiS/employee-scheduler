@@ -14,14 +14,19 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Get all doctors
-router.get('/', authMiddleware, async (req, res) => {
+const getDoctors = async () => {
+  const doctors = await Doctor.findAll();
+  return doctors;
+};
+const getDoctorsHandler = async (req, res) => {
   try {
-    const doctors = await Doctor.findAll();
+    const doctors = await getDoctors();
     res.json(doctors);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+};
+router.get('/', authMiddleware, getDoctorsHandler);
 
 // Get a specific doctor
 router.get('/:id', authMiddleware, async (req, res) => {
@@ -67,4 +72,4 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {router, getDoctors};

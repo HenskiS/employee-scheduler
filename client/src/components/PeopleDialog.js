@@ -1,11 +1,10 @@
-// PeopleDialog.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, IconButton, Box, useMediaQuery } from '@mui/material';
 import { Close, ArrowBack } from '@mui/icons-material';
 import Sidebar from './Sidebar';
 import PeopleList from './PeopleList';
 import PersonDetails from './PersonDetails';
-import { fetchPeople } from '../api/peopleApi';
+import { useScheduling } from './SchedulingContext';
 
 const PeopleDialog = ({ open, onClose }) => {
   const [tab, setTab] = useState(0);
@@ -14,41 +13,19 @@ const PeopleDialog = ({ open, onClose }) => {
   const [editMode, setEditMode] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [showingDetails, setShowingDetails] = useState(false);
-  const [people, setPeople] = useState({
-    doctors: [],
-    technicians: [],
-    users: []
-  });
   
+  const { doctors, technicians, users, refreshData } = useScheduling();
   const isMobile = useMediaQuery('(max-width:800px)');
 
-  const findPersonInData = (data, personId, currentType) => {
-    return data[currentType].find(p => p.id === personId);
+  const getCurrentPeople = () => {
+    const types = ['doctors', 'technicians', 'users'];
+    const peopleMap = {
+      doctors,
+      technicians,
+      users
+    };
+    return peopleMap[types[tab]] || [];
   };
-
-  const refreshData = async (currentPersonId) => {
-    try {
-      const types = ['doctors', 'technicians', 'users'];
-      const currentType = types[tab];
-      const newData = await fetchPeople();
-      setPeople(newData);
-      
-      if (currentPersonId) {
-        const updatedPerson = findPersonInData(newData, currentPersonId, currentType);
-        if (updatedPerson) {
-          setSelectedPerson(updatedPerson);
-        }
-      }
-      return newData;
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    refreshData(selectedPerson?.id);
-  }, []);
 
   const handleTabChange = (newValue) => {
     setTab(newValue);
@@ -82,17 +59,12 @@ const PeopleDialog = ({ open, onClose }) => {
     setEditMode(false);
   };
 
-  const getCurrentPeople = () => {
-    const types = ['doctors', 'technicians', 'users'];
-    return people[types[tab]] || [];
-  };
-
   const handleSave = async (savedPerson) => {
     try {
       setSelectedPerson({...savedPerson});
       setEditMode(false);
       setIsAdding(false);
-      await refreshData(savedPerson.id);
+      await refreshData();
       if (isMobile) {
         setShowingDetails(false);
       }
@@ -101,9 +73,8 @@ const PeopleDialog = ({ open, onClose }) => {
     }
   };
 
-  const handleDelete = async (id) => {
-    const newData = await fetchPeople();
-    setPeople(newData);
+  const handleDelete = async () => {
+    await refreshData();
     setSelectedPerson(null);
     setIsAdding(false);
     setEditMode(false);
@@ -153,7 +124,7 @@ const PeopleDialog = ({ open, onClose }) => {
           display: 'flex', 
           flexGrow: 1,
           overflow: 'hidden',
-          '& > *': { minWidth: 0 } // Prevents flex children from expanding
+          '& > *': { minWidth: 0 }
         }}>
           {(!isMobile || !showingDetails) && (
             <>

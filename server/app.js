@@ -3,10 +3,11 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const sequelize = require('./config/database');
-const doctorRoutes = require('./routes/doctors');
-const technicianRoutes = require('./routes/technicians');
-const userRoutes = require('./routes/users');
-const eventRoutes = require('./routes/events');
+const { router: doctorRoutes} = require('./routes/doctors');
+const { router: technicianRoutes} = require('./routes/technicians');
+const { router: userRoutes} = require('./routes/users');
+const { router: eventRoutes} = require('./routes/events');
+const refreshRoutes = require('./routes/refresh')
 const loggingMiddleware = require('./middleware/logging')
 
 require('./models');
@@ -23,6 +24,7 @@ app.use(express.static(path.join(__dirname, '..', 'client', 'build')));
 
 // API routes
 app.use('/api/test', (req, res) => { return res.json("Server is running!")});
+app.use('/api/refresh', refreshRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/users', userRoutes);

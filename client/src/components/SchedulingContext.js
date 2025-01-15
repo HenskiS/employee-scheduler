@@ -49,6 +49,7 @@ const colorMap = {
 export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH_INTERVAL }) => {
     const [doctors, setDoctors] = useState([]);
     const [technicians, setTechnicians] = useState([]);
+    const [users, setUsers] = useState([]);
     const [events, setEvents] = useState([]);
     const [dateRange, setDateRange] = useState({
         start: moment().startOf('month').toISOString(),
@@ -56,45 +57,77 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [token, setToken] = useState(localStorage.getItem('token'));
+
+    // Watch for token changes
+    useEffect(() => {
+        const handleStorageChange = () => {
+            const newToken = localStorage.getItem('token');
+            setToken(newToken);
+        };
+
+        // Listen for storage changes
+        window.addEventListener('storage', handleStorageChange);
+        
+        // Also set up an interval to check localStorage directly
+        // This handles same-window token changes
+        const tokenCheckInterval = setInterval(() => {
+            const currentToken = localStorage.getItem('token');
+            if (currentToken !== token) {
+                setToken(currentToken);
+            }
+        }, 1000);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            clearInterval(tokenCheckInterval);
+        };
+    }, [token]);
 
     const fetchData = useCallback(async () => {
+        if (!token) return;
+        
         try {
             setLoading(true);
             
-            const [doctorsData, techniciansData, eventsData] = await Promise.all([
-                axios.get('/doctors'),
-                axios.get('/technicians'),
-                axios.get(`/events/?start=${dateRange.start}&end=${dateRange.end}`)
-            ]);
+            const response = await axios.get(`/refresh?start=${dateRange.start}&end=${dateRange.end}`);
+            const { data: { doctors, technicians, users, events } } = response.data;
 
-            setDoctors(doctorsData.data);
-            setTechnicians(techniciansData.data.sort((a, b) => a.name.localeCompare(b.name)));
-            setEvents(eventsData.data);
+            setDoctors(doctors.sort((a, b) => a.name.localeCompare(b.name)));
+            setTechnicians(technicians.sort((a, b) => a.name.localeCompare(b.name)));
+            setUsers(users.sort((a, b) => a.name.localeCompare(b.name)));
+            setEvents(events);
             setError(null);
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    }, [dateRange]);
+    }, [dateRange, token]);
 
+    // Fetch data whenever token changes
     useEffect(() => {
-        // Only fetch if we have a token
-        if (localStorage.getItem('token')) {
+        if (token) {
             fetchData();
-            const intervalId = setInterval(fetchData, refreshInterval);
-            return () => clearInterval(intervalId);
         }
-    }, [fetchData, refreshInterval]);
+    }, [token, fetchData]);
+
+    // Set up refresh interval when we have a token
+    useEffect(() => {
+        if (!token) return;
+
+        const intervalId = setInterval(fetchData, refreshInterval);
+        return () => clearInterval(intervalId);
+    }, [fetchData, refreshInterval, token]);
 
     const refreshData = useCallback(() => {
-        if (localStorage.getItem('token')) {
+        if (token) {
             fetchData();
         }
-    }, [fetchData]);
+    }, [fetchData, token]);
 
     const updateDateRange = useCallback((start, end) => {
-        if (!localStorage.getItem('token')) return;
+        if (!token) return;
         
         const newStart = moment(start).startOf('day');
         const newEnd = moment(end).endOf('day');
@@ -115,13 +148,12 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         
         if (!expandedStart.isSame(dateRange.start) || !expandedEnd.isSame(dateRange.end)) {
             setDateRange({
-                start: expandedStart,
-                end: expandedEnd
+                start: expandedStart.toISOString(),
+                end: expandedEnd.toISOString()
             });
             console.log(`Expanded date range: ${expandedStart.format('YYYY-MM-DD')} to ${expandedEnd.format('YYYY-MM-DD')}`);
         }
-    }, [dateRange]);
-    
+    }, [dateRange, token]);
 
     return (
         <SchedulingContext.Provider value={{ 
@@ -129,6 +161,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             colorMap,
             doctors, 
             technicians, 
+            users, 
             events, 
             throughThirty, 
             loading, 

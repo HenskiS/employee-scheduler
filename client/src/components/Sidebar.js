@@ -7,6 +7,7 @@ const Sidebar = ({ tab, onTabChange }) => {
     { id: 2, label: 'USERS' }
   ];
   const isMobile = useMediaQuery('(max-width:800px)');
+  
   const styles = {
     sidebar: {
       width: isMobile ? '30%' : '20%',
@@ -19,7 +20,7 @@ const Sidebar = ({ tab, onTabChange }) => {
       padding: '12px 16px',
       textAlign: 'left',
       border: 'none',
-      background: 'none',
+      backgroundColor: 'transparent',
       cursor: 'pointer',
       fontSize: '14px',
       transition: 'all 0.2s',
@@ -30,27 +31,46 @@ const Sidebar = ({ tab, onTabChange }) => {
       fontWeight: 500,
     },
     inactiveButton: {
+      backgroundColor: 'transparent',
       color: '#424242',
+    },
+    buttonHoverActive: {
+      backgroundColor: '#1565c0',
+    },
+    buttonHoverInactive: {
+      backgroundColor: '#f5f5f5',
     }
   };
 
   return (
     <div style={styles.sidebar}>
-      {tabs.map(({ id, label }) => (
-        <button
-          key={id}
-          onClick={() => onTabChange(id)}
-          style={{
-            ...styles.button,
-            ...(tab === id ? styles.activeButton : styles.inactiveButton),
-            '&:hover': {
-              backgroundColor: tab === id ? '#1565c0' : '#f5f5f5'
-            }
-          }}
-        >
-          {label}
-        </button>
-      ))}
+      {tabs.map(({ id, label }) => {
+        const isActive = tab === id;
+        const baseStyle = {
+          ...styles.button,
+          ...(isActive ? styles.activeButton : styles.inactiveButton)
+        };
+
+        return (
+          <button
+            key={id}
+            onClick={() => onTabChange(id)}
+            style={baseStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isActive 
+                ? styles.buttonHoverActive.backgroundColor 
+                : styles.buttonHoverInactive.backgroundColor;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isActive 
+                ? styles.activeButton.backgroundColor 
+                : styles.inactiveButton.backgroundColor;
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 };

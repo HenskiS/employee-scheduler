@@ -14,14 +14,23 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Get all technicians
-router.get('/', authMiddleware, async (req, res) => {
+const getTechnicians = async () => {
   try {
     const technicians = await Technician.findAll();
+    return technicians;
+  } catch (error) {
+    throw error;
+  }
+};
+const getTechniciansHandler = async (req, res) => {
+  try {
+    const technicians = await getTechnicians();
     res.json(technicians);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+};
+router.get('/', authMiddleware, getTechniciansHandler);
 
 // Get a specific technician
 router.get('/:id', authMiddleware, async (req, res) => {
@@ -67,4 +76,4 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {router, getTechnicians};

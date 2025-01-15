@@ -38,7 +38,7 @@ router.post('/login', async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user.id, username: user.username, isAdmin: user.isAdmin }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.json({ token });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -46,14 +46,33 @@ router.post('/login', async (req, res) => {
 });
 
 // Get all users (protected route)
-router.get('/', authMiddleware, async (req, res) => {
+const getUsers = async (isAdmin, userId) => {
   try {
-    const users = await User.findAll({ attributes: { exclude: ['password'] } });
-    res.json(users);
+    if (isAdmin) {
+      return await User.findAll({
+        attributes: { exclude: ['password'] }
+      });
+    } else {
+      const user = await User.findOne({
+        where: { id: userId },
+        attributes: { exclude: ['password'] }
+      });
+      return [user];
+    }
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
+const getUsersHandler = async (req, res) => {
+  try {
+    const { isAdmin, id } = req.user;
+    const users = await getUsers(isAdmin, id);
+    return res.json(users);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+};
+router.get('/', authMiddleware, getUsersHandler);
 
 // Get a specific user (protected route)
 router.get('/:id', authMiddleware, async (req, res) => {
@@ -77,6 +96,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       if (req.body.password) {
         req.body.password = await hashPassword(req.body.password);
       }
+      if (!req.user.isAdmin) req.body.isAdmin = false;
       await user.update(req.body);
       const updatedUser = await User.findByPk(req.params.id, {
         attributes: { exclude: ['password'] }
@@ -105,4 +125,4 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {router, getUsers};

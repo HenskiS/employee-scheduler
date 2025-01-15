@@ -42,6 +42,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setIsAuthenticated(false);
+    window.location.reload();
   };
 
   return (

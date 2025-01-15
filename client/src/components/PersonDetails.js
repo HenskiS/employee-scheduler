@@ -7,7 +7,9 @@ import {
   Divider,
   Alert,
   Snackbar,
-  CircularProgress
+  CircularProgress,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import { Save, Edit, Delete } from '@mui/icons-material';
 import { useMediaQuery } from '@mui/material';
@@ -36,7 +38,8 @@ const FIELD_CONFIGS = {
     { key: 'email', label: 'Email', required: true },
     { key: 'username', label: 'Username', required: true },
     { key: 'password', label: 'Password', type: 'password' },
-    { key: 'confirmPassword', label: 'Confirm Password', type: 'password' }
+    { key: 'confirmPassword', label: 'Confirm Password', type: 'password' },
+    { key: 'isAdmin', label: 'Administrator', type: 'checkbox' }
   ]
 };
 
@@ -178,30 +181,45 @@ const PersonDetails = ({
         </Alert>
       )}
       
-      {fields.map(({ key, label, required, type, multiline, rows }) => (
-        <TextField
-          key={key}
-          fullWidth
-          label={label}
-          value={formData[key] || ''}
-          onChange={(e) => handleFieldChange(key, e.target.value)}
-          InputProps={{ 
-            readOnly: !editMode,
-          }}
-          required={required}
-          error={!!validationErrors[key]}
-          helperText={validationErrors[key]}
-          type={type || 'text'}
-          multiline={multiline}
-          rows={rows}
-          sx={{
-            mb: 2,
-            '& .MuiInputBase-input.Mui-readOnly': {
-              color: 'text.primary',
-            },
-          }}
-        />
-      ))}
+      {fields.map(({ key, label, required, type, multiline, rows }) => 
+        type === 'checkbox' ? (
+          <FormControlLabel
+            key={key}
+            control={
+              <Checkbox
+                checked={formData[key] || false}
+                onChange={(e) => handleFieldChange(key, e.target.checked)}
+                disabled={!editMode}
+              />
+            }
+            label={label}
+            sx={{ mb: 2 }}
+          />
+        ) : (
+          <TextField
+            key={key}
+            fullWidth
+            label={label}
+            value={formData[key] || ''}
+            onChange={(e) => handleFieldChange(key, e.target.value)}
+            InputProps={{ 
+              readOnly: !editMode,
+            }}
+            required={required}
+            error={!!validationErrors[key]}
+            helperText={validationErrors[key]}
+            type={type || 'text'}
+            multiline={multiline}
+            rows={rows}
+            sx={{
+              mb: 2,
+              '& .MuiInputBase-input.Mui-readOnly': {
+                color: 'text.primary',
+              },
+            }}
+          />
+        )
+      )}
 
       <Box sx={{ display: 'flex', justifyContent: isAdding ? 'flex-end' : 'space-between', mt: 2, mb: 2 }}>
         {!isAdding && (
