@@ -2,161 +2,147 @@ const express = require('express');
 const router = express.Router();
 const sequelize = require('../config/database')
 const { Op } = require('sequelize')
-const {Event, RecurrenceRule, Technician, Doctor} = require('../models/index');
+const {Event, Technician, Doctor} = require('../models/index');
 const authMiddleware = require('../middleware/auth');
 const RRule = require('rrule').RRule;
 
+// Helper function to create recurring events
+const createRecurringEvents = async (originalEvent, rule, transaction) => {
+  const rrule = RRule.fromString(rule);
+  const eventStart = new Date(originalEvent.startTime);
+  const eventEnd = new Date(originalEvent.endTime);
+  const eventDuration = eventEnd - eventStart;
+  
+  // Get all recurrence dates (limit to reasonable future date, e.g., 2 years)
+  const futureDate = new Date();
+  futureDate.setFullYear(futureDate.getFullYear() + 2);
+  const recurringDates = rrule.between(eventStart, futureDate);
+  
+  // Skip the first date if it matches the original event
+  const dates = recurringDates.filter(date => 
+    date.getTime() !== eventStart.getTime()
+  );
+
+  // Create events for each recurrence
+  const recurrencePromises = dates.map(date => {
+    const instanceStart = new Date(date);
+    instanceStart.setHours(eventStart.getHours());
+    instanceStart.setMinutes(eventStart.getMinutes());
+    
+    const instanceEnd = new Date(instanceStart.getTime() + eventDuration);
+    
+    return Event.create({
+      name: originalEvent.name,
+      description: originalEvent.description,
+      startTime: instanceStart,
+      endTime: instanceEnd,
+      allDay: originalEvent.allDay,
+      label: originalEvent.label,
+      jobNumber: originalEvent.jobNumber,
+      isRecurring: true,
+      originalEventId: originalEvent.id,
+      DoctorId: originalEvent.DoctorId,
+      recurrencePattern: rule,
+      createdBy: originalEvent.createdBy
+    }, { transaction });
+  });
+
+  const recurrences = await Promise.all(recurrencePromises);
+  
+  // Copy technician assignments
+  if (originalEvent.Technicians && originalEvent.Technicians.length > 0) {
+    await Promise.all(recurrences.map(async (recurrence) => {
+      await recurrence.setTechnicians(
+        originalEvent.Technicians.map(tech => tech.id),
+        { transaction }
+      );
+    }));
+  }
+  
+  return recurrences;
+};
+
 // Create a new event
 router.post('/', authMiddleware, async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { name, startTime, endTime, Technicians, isRecurring, rule, ...otherEventData } = req.body;
 
-    // Validate required fields
     if (!name || !startTime || !endTime) {
+      await t.rollback();
       return res.status(400).json({ error: 'Name, start time, and end time are required fields' });
     }
 
-    // Start a transaction
-    const result = await sequelize.transaction(async (t) => {
-      // Create the event
-      const event = await Event.create({
-        name,
-        startTime,
-        endTime,
-        isRecurring,
-        ...otherEventData
-      }, { transaction: t });
+    // Create the original event
+    const event = await Event.create({
+      name,
+      startTime,
+      endTime,
+      isRecurring,
+      recurrencePattern: isRecurring ? rule : null,
+      ...otherEventData
+    }, { transaction: t });
 
-      // Associate technicians if attendees are provided
-      if (Technicians && Technicians.length > 0) {
-        const techs = await Technician.findAll({
-          where: { id: Technicians.map(tech=>tech.id) },
-          transaction: t
-        });
-        await event.setTechnicians(techs, { transaction: t });
-      }
-
-      // Create recurrence rule if provided
-      if (isRecurring) {
-        try {
-          // Validate the recurrence rule
-          RRule.fromString(rule);
-
-          await event.createRecurrenceRule({
-            rule: rule
-          }, { transaction: t });
-        } catch (error) {
-          await t.rollback();
-          return res.status(400).json({ error: 'Invalid recurrence rule' });
-        }
-      }
-
-      return event;
+    // Associate technicians
+    const techs = await Technician.findAll({
+      where: { id: Technicians?.map(tech => tech.id) || [] },
+      transaction: t
     });
+    await event.setTechnicians(techs, { transaction: t });
 
-    // Fetch the created event with associated technicians
-    const createdEvent = await Event.findByPk(result.id, {
-      include: [{ model: Technician, through: { attributes: [] } }, { model: Doctor }]
+    // Create recurring events if needed
+    if (isRecurring && rule) {
+      try {
+        await createRecurringEvents(event, rule, t);
+      } catch (error) {
+        await t.rollback();
+        return res.status(400).json({ error: 'Invalid recurrence rule' });
+      }
+    }
+
+    await t.commit();
+
+    // Fetch the created event with associations
+    const createdEvent = await Event.findByPk(event.id, {
+      include: [
+        { model: Technician, through: { attributes: [] } },
+        { model: Doctor },
+        { 
+          model: Event,
+          as: 'recurrences',
+          include: [{ model: Technician, through: { attributes: [] } }]
+        }
+      ]
     });
 
     res.status(201).json(createdEvent);
   } catch (error) {
+    await t.rollback();
     console.error('Error creating event:', error);
     res.status(500).json({ error: error.message || 'An error occurred while creating the event' });
   }
 });
 
-// Get all events
-/*router.get('/', authMiddleware, async (req, res) => {
-  try {
-    const events = await Event.findAll({ include: [{ model: Technician, through: { attributes: [] } }] });
-    res.json(events);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});*/
 // Get events in range
 const fetchEvents = async (startDate, endDate) => {
-  // Validate date range
   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
     throw new Error('Invalid date range provided');
   }
 
-  // Fetch all events in range and their recurrence rules
-  const events = await Event.findAll({
+  return await Event.findAll({
     include: [
+      { model: Technician, through: { attributes: [] } },
+      { model: Doctor },
       { 
-        model: Technician, 
-        through: { attributes: [] }
-      },
-      {
-        model: RecurrenceRule,
-        required: false
-      },
-      { model: Doctor}
-    ],
-    where: {
-      [Op.or]: [
-        // Events starting within the range
-        { startTime: { [Op.between]: [startDate, endDate] } },
-        // Recurring events that might have instances in the range
-        { '$RecurrenceRule.id$': { [Op.not]: null } }
-      ]
-    }
-  });
-
-  // Expand recurring events
-  return events.flatMap(event => {
-    const eventStart = new Date(event.startTime);
-    const eventEnd = new Date(event.endTime);
-    const eventDuration = eventEnd - eventStart;
-    
-    let instances = [];
-
-    // Include the original event if it's within the range
-    if (eventStart >= startDate && eventStart < endDate) {
-      instances.push({
-        ...event.toJSON(),
-        isOriginalEvent: true
-      });
-    }
-
-    // If it's a recurring event, add the recurrences
-    if (event.RecurrenceRule) {
-      try {
-        const rule = RRule.fromString(event.RecurrenceRule.rule);
-        const recurringInstances = rule.between(startDate, endDate);
-        
-        instances = [
-          ...instances,
-          ...recurringInstances.map(date => {
-            // Skip if this instance is the original event
-            if (date.getTime() === eventStart.getTime()) {
-              return null;
-            }
-            // set start time to event start time
-            const instanceStart = new Date(date);
-            instanceStart.setHours(eventStart.getHours());
-            instanceStart.setMinutes(eventStart.getMinutes());
-            instanceStart.setSeconds(eventStart.getSeconds());
-            instanceStart.setMilliseconds(eventStart.getMilliseconds());
-            
-            const instanceEnd = new Date(instanceStart.getTime() + eventDuration);
-            
-            return {
-              ...event.toJSON(),
-              startTime: instanceStart.toISOString(),
-              endTime: instanceEnd.toISOString(),
-              isRecurring: true
-            };
-          }).filter(Boolean) // Remove null entries
-        ];
-      } catch (error) {
-        console.error(`Error processing recurring event ${event.id}:`, error);
+        model: Event,
+        as: 'originalEvent',
+        include: [{ model: Technician }]
       }
-    }
+    ],
 
-    return instances;
+    where: {
+      startTime: { [Op.between]: [startDate, endDate] }
+    }
   });
 };
 
@@ -208,75 +194,171 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Helper function to handle time updates while preserving dates
+// Can we condense this? Why do we make a newDate(origStart) when origStart was already a new date?
+const updateEventTimes = (originalEvent, newStartTime, newEndTime) => {
+  if (!newStartTime && !newEndTime) return null;
+
+  const origStart = new Date(originalEvent.startTime);
+  const origEnd = new Date(originalEvent.endTime);
+  const newStart = new Date(newStartTime || originalEvent.startTime);
+  const newEnd = new Date(newEndTime || originalEvent.endTime);
+
+  // Keep original dates but update time components
+  const updatedStart = new Date(origStart);
+  updatedStart.setHours(newStart.getHours(), newStart.getMinutes(), newStart.getSeconds());
+
+  const updatedEnd = new Date(origEnd);
+  updatedEnd.setHours(newEnd.getHours(), newEnd.getMinutes(), newEnd.getSeconds());
+
+  return {
+    startTime: updatedStart,
+    endTime: updatedEnd
+  };
+};
+
+// Helper function to prepare update data
+const prepareUpdateData = (originalEvent, requestBody) => {
+  const { startTime, endTime, ...updateData } = requestBody;
+  const timeUpdates = updateEventTimes(originalEvent, startTime, endTime);
+  
+  return {
+    ...updateData,
+    ...(timeUpdates || {})
+  };
+};
+
 // Update an event
 router.put('/:id', authMiddleware, async (req, res) => {
+  const t = await sequelize.transaction();
   try {
+    const { updateType = 'single' } = req.query; // 'single', 'all', 'future'
     const event = await Event.findByPk(req.params.id, {
       include: [
-        { model: RecurrenceRule },
-        { model: Technician }
+        { model: Technician },
+        { model: Doctor },
+        { 
+          model: Event,
+          as: 'recurrences',
+          where: updateType === 'future' ? {
+            startTime: { [Op.gte]: new Date(req.body.startTime || new Date()) }
+          } : undefined,
+          required: false
+        }
       ]
     });
 
     if (!event) {
+      await t.rollback();
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if the doctor is being changed
-    if (req.body.DoctorId && req.body.DoctorId !== event.DoctorId) {
-      const newDoctor = await Doctor.findByPk(req.body.DoctorId);
-      if (!newDoctor) {
-        return res.status(404).json({ error: 'New doctor not found' });
+    // Handle different update types
+    if (updateType === 'single') {
+      // Update only this event
+      await event.update(req.body, { transaction: t });
+      
+      if (req.body.Technicians) {
+        await event.setTechnicians(req.body.Technicians.map(tech => tech.id), { transaction: t });
       }
-    }
+    } else if (updateType === 'all' || updateType === 'future') {
+      // If recurrence pattern is changing, we need to recreate the recurring events
+      if (req.body.recurrencePattern && req.body.recurrencePattern !== event.recurrencePattern) {
+        // Delete existing recurrences that we're updating
+        await Event.destroy({
+          where: {
+            [Op.and]: [
+              { 
+                [Op.or]: [
+                  { id: event.id },
+                  { originalEventId: event.id },
+                  { originalEventId: event.originalEventId }
+                ]
+              },
+              updateType === 'future' 
+                ? { startTime: { [Op.gte]: event.startTime } }
+                : {}
+            ]
+          },
+          transaction: t
+        });
 
-    // Handle RecurrenceRule updates
-    if (event.RecurrenceRule) {
-      if (!req.body.isRecurring) {
-        await RecurrenceRule.destroy({ where: { EventId: event.id } });
-      } else if (req.body.RecurrenceRule) {
-        const recurrenceRule = await RecurrenceRule.findByPk(event.RecurrenceRule.id);
-        if (recurrenceRule) {
-          await recurrenceRule.update(req.body.RecurrenceRule);
+        // Create new event with updated pattern
+        const newEvent = await Event.create({
+          ...req.body,
+          originalEventId: null // This will be the new original event
+        }, { transaction: t });
+
+        // Set technicians for the new event
+        if (req.body.Technicians) {
+          await newEvent.setTechnicians(
+            req.body.Technicians.map(tech => tech.id),
+            { transaction: t }
+          );
+        }
+
+        // Create new recurrences with updated pattern
+        await createRecurringEvents(newEvent, req.body.recurrencePattern, t);
+
+        // Update our reference to return the new event
+        event = newEvent;
+      } else {
+        // No pattern change, just regular updates
+        // Update original event if it exists and we're updating all
+        if (updateType === 'all' && event.originalEventId) {
+          const originalEvent = await Event.findByPk(event.originalEventId);
+          if (originalEvent) {
+            const updateData = prepareUpdateData(originalEvent, req.body);
+            await originalEvent.update(updateData, { transaction: t });
+            
+            if (req.body.Technicians) {
+              await originalEvent.setTechnicians(
+                req.body.Technicians.map(tech => tech.id),
+                { transaction: t }
+              );
+            }
+          }
+        }
+
+        // Update this event
+        await event.update(req.body, { transaction: t });
+        if (req.body.Technicians) {
+          await event.setTechnicians(
+            req.body.Technicians.map(tech => tech.id),
+            { transaction: t }
+          );
+        }
+
+        // Update recurrences
+        if (event.recurrences && event.recurrences.length > 0) {
+          await Promise.all(event.recurrences.map(async (recurrence) => {
+            const updateData = prepareUpdateData(recurrence, req.body);
+            await recurrence.update(updateData, { transaction: t });
+            
+            if (req.body.Technicians) {
+              await recurrence.setTechnicians(
+                req.body.Technicians.map(tech => tech.id),
+                { transaction: t }
+              );
+            }
+          }));
         }
       }
-    } else if (req.body.isRecurring && req.body.RecurrenceRule) {
-      const newRule = await RecurrenceRule.create(req.body.RecurrenceRule);
-      await event.setRecurrenceRule(newRule);
     }
 
-    // Handle technician updates
-    if (req.body.Technicians) {
-      const technicianIds = req.body.Technicians.map(tech => tech.id);
-      // Verify all technicians exist
-      const technicians = await Technician.findAll({
-        where: {
-          id: technicianIds
-        }
-      });
-      if (technicians.length !== technicianIds.length) {
-        return res.status(404).json({ error: 'One or more technicians not found' });
-      }
+    await t.commit();
 
-      // Update the technician associations
-      await event.setTechnicians(technicianIds);
-    }
-
-    // Update the event
-    await event.update(req.body);
-
-    // Reload the event with all associations
+    // Reload the event
     await event.reload({
       include: [
-        { model: Doctor, attributes: ['id', 'name'] },
-        { model: RecurrenceRule },
-        { model: Technician }
+        { model: Technician },
+        { model: Doctor }
       ]
     });
 
     res.json(event);
-
   } catch (error) {
+    await t.rollback();
     console.error('Error updating event:', error);
     res.status(400).json({ error: error.message });
   }
@@ -286,42 +368,67 @@ router.put('/:id', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const event = await Event.findByPk(req.params.id, { transaction: t });
-    
-    if (event) {
-      // Delete associated RecurrenceRules
-      await RecurrenceRule.destroy({
-        where: { EventId: req.params.id },
+    const { deleteType = 'single' } = req.query; // 'single', 'all', 'future'
+    const event = await Event.findByPk(req.params.id, {
+      include: [{
+        model: Event,
+        as: 'recurrences',
+        where: deleteType === 'future' ? {
+          startTime: { [Op.gte]: new Date() }
+        } : undefined,
+        required: false
+      }]
+    });
+
+    if (!event) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (deleteType === 'single') {
+      await event.destroy({ transaction: t });
+    } else if (deleteType === 'all') {
+      // Delete original event if it exists
+      if (event.originalEventId) {
+        await Event.destroy({
+          where: { id: event.originalEventId },
+          transaction: t
+        });
+      }
+      // Delete all recurrences
+      await Event.destroy({
+        where: {
+          [Op.or]: [
+            { id: event.id },
+            { originalEventId: event.id },
+            { originalEventId: event.originalEventId }
+          ]
+        },
         transaction: t
       });
-      // Delete the event
-      await event.destroy({ transaction: t });
-      await t.commit();
-      res.status(204).end();
-    } else {
-      await t.rollback();
-      res.status(404).json({ error: 'Event not found' });
+    } else if (deleteType === 'future') {
+      // Delete this event and future recurrences
+      await Event.destroy({
+        where: {
+          [Op.and]: [
+            {
+              [Op.or]: [
+                { id: event.id },
+                { originalEventId: event.id },
+                { originalEventId: event.originalEventId }
+              ]
+            },
+            { startTime: { [Op.gte]: event.startTime } }
+          ]
+        },
+        transaction: t
+      });
     }
+
+    await t.commit();
+    res.status(204).end();
   } catch (error) {
     await t.rollback();
     res.status(500).json({ error: error.message });
   }
 });
-
-// Assign a technician to an event
-router.post('/:id/assign', authMiddleware, async (req, res) => {
-  try {
-    const event = await Event.findByPk(req.params.id);
-    const technician = await Technician.findByPk(req.body.technicianId);
-    if (event && technician) {
-      await event.addTechnician(technician);
-      res.json({ message: 'Technician assigned successfully' });
-    } else {
-      res.status(404).json({ error: 'Event or Technician not found' });
-    }
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-module.exports = {router, getEvents};

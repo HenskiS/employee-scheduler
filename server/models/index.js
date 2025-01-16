@@ -3,7 +3,6 @@ const Doctor = require('./Doctor');
 const Technician = require('./Technician');
 const User = require('./User');
 const Event = require('./Event');
-const RecurrenceRule = require('./RecurrenceRule');
 
 // Doctor-Technician relationships
 Doctor.belongsToMany(Technician, { through: 'DoctorPreferredTechnicians', as: 'preferredTechnicians' });
@@ -18,10 +17,6 @@ Technician.belongsToMany(Doctor, { through: 'DoctorAvoidTechnicians', as: 'avoid
 Event.belongsToMany(Technician, { through: 'EventTechnicians' });
 Technician.belongsToMany(Event, { through: 'EventTechnicians' });
 
-// Event-RecurrenceRule relationship
-Event.hasOne(RecurrenceRule)
-RecurrenceRule.belongsTo(Event);
-
 // Event-Doctor relationship
 Event.belongsTo(Doctor);
 Doctor.hasMany(Event);
@@ -30,6 +25,5 @@ module.exports = {
   Doctor,
   Technician,
   User,
-  Event,
-  RecurrenceRule
+  Event
 };

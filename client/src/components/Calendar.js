@@ -79,11 +79,10 @@ const MyCalendar = () => {
 
   const handleSaveEvent = async (event) => {
     try {
-      const eventData = {...event, attendees: [event.technicianId] };
       if (event.id) {
-        await axios.put(`/events/${event.id}`, eventData);
+        await axios.put(`/events/${event.id}`, event);
       } else {
-        await axios.post('/events', eventData);
+        await axios.post('/events', event);
       }
       refreshData();
       handleCloseDialog();
