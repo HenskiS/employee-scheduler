@@ -15,7 +15,6 @@ function Login({ onLoginSuccess }) {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -25,20 +24,13 @@ function Login({ onLoginSuccess }) {
     setError('');
 
     try {
-      // Basic validation
       if (!formData.username || !formData.password) {
         throw new Error('Please fill in all fields');
       }
 
       const response = await axios.post('/users/login', formData);
-      
-      // Store token securely
       localStorage.setItem('token', response.data.token);
-      
-      // Clear sensitive data
       setFormData({ username: '', password: '' });
-      
-      // Notify parent component of successful login
       onLoginSuccess();
       
     } catch (err) {
@@ -55,7 +47,7 @@ function Login({ onLoginSuccess }) {
         <Typography variant="h5" component="h1" gutterBottom>
           Login
         </Typography>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="on">
           <TextField
             name="username"
             label="Username"
@@ -65,7 +57,15 @@ function Login({ onLoginSuccess }) {
             value={formData.username}
             onChange={handleChange}
             disabled={isLoading}
-            autoComplete="username"
+            autoComplete="username webauthn"
+            inputProps={{
+              sx: {
+                '&:-webkit-autofill': {
+                  WebkitBoxShadow: '0 0 0 100px white inset',
+                  WebkitTextFillColor: 'inherit',
+                },
+              },
+            }}
           />
           <TextField
             name="password"
@@ -78,6 +78,14 @@ function Login({ onLoginSuccess }) {
             onChange={handleChange}
             disabled={isLoading}
             autoComplete="current-password"
+            inputProps={{
+              sx: {
+                '&:-webkit-autofill': {
+                  WebkitBoxShadow: '0 0 0 100px white inset',
+                  WebkitTextFillColor: 'inherit',
+                },
+              },
+            }}
           />
           <Button 
             type="submit" 
