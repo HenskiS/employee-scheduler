@@ -13,6 +13,10 @@ Technician.belongsToMany(Doctor, { through: 'DoctorAvoidTechnicians', as: 'avoid
 // Event-User relationship
 // Event.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 
+// Self-referential relationship for recurring events
+Event.belongsTo(Event, { as: 'originalEvent', foreignKey: 'originalEventId' });
+Event.hasMany(Event, { as: 'recurrences', foreignKey: 'originalEventId' });
+
 // Event-Technician relationship
 Event.belongsToMany(Technician, { through: 'EventTechnicians' });
 Technician.belongsToMany(Event, { through: 'EventTechnicians' });

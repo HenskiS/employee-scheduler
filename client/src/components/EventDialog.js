@@ -21,7 +21,7 @@ import { useScheduling } from './SchedulingContext';
 import RecurringEventForm from './RecurringEventForm';
 import TechnicianSelector from './TechnicianSelector';
 
-function EventDialog({ open, onClose, event, onSave, newEvent }) {
+function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
   const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
 
   const [formData, setFormData] = useState({
@@ -33,8 +33,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
     label: 'none',
     jobNumber: '',
     isRecurring: false,
-    RecurrenceRule: null,
-    rule: '',
+    recurrencePattern: null,
     Technicians: [],
     DoctorId: null
   });
@@ -66,7 +65,6 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
         endTime: moment(newEvent.end),
         jobNumber: newEvent.resourceId,
         allDay: newEvent.allDay,
-        rule: ''
       });
     }
   }, [event, newEvent]);
@@ -145,20 +143,15 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
   const handleDelete = async () => {
     if (window.confirm("Are you sure you wish to delete this event?")) {
       if (!event?.isRecurring || window.confirm("Deleting a recurring event will delete all future instances of this event. Are you sure?")) {
-        try {
-          await axios.delete(`/events/${event.id}`);
-          refreshData();
-          onClose();
-        } catch (error) {
-          console.error('Error deleting event:', error);
-        }
+        onDelete();
+        onClose();
       }
     }
   };
 
   const handleSave = (rrule) => {
-    if (newEvent) setFormData({ ...formData, rule: rrule });
-    else setFormData({ ...formData, RecurrenceRule: {...formData.RecurrenceRule, rule: rrule}});
+    if (newEvent) setFormData({ ...formData, recurrencePattern: rrule });
+    else setFormData({ ...formData, recurrencePattern: rrule});
   };
 
   return (
@@ -268,7 +261,7 @@ function EventDialog({ open, onClose, event, onSave, newEvent }) {
           {formData.isRecurring && 
             <RecurringEventForm 
               startDate={formData.startTime}
-              rrule={formData.RecurrenceRule?.rule ? formData.RecurrenceRule.rule : null}
+              rrule={formData.recurrencePattern ? formData.recurrencePattern : null}
               onChange={handleSave}
             />
           }

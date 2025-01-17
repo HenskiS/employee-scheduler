@@ -49,8 +49,5 @@ const Event = sequelize.define('Event', {
   }
 }, {paranoid: true, timestamps: true});
 
-// Self-referential relationship for recurring events
-Event.belongsTo(Event, { as: 'originalEvent', foreignKey: 'originalEventId' });
-Event.hasMany(Event, { as: 'recurrences', foreignKey: 'originalEventId' });
 
 module.exports = Event;

@@ -32,3 +32,6 @@
 .rbc-events-container {
     margin-right: 0px !important;
 }
+.rbc-row-segment .rbc-event-content {
+    white-space: normal !important;
+}

@@ -66,7 +66,7 @@ const createRecurringEvents = async (originalEvent, rule, transaction) => {
 router.post('/', authMiddleware, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { name, startTime, endTime, Technicians, isRecurring, rule, ...otherEventData } = req.body;
+    const { name, startTime, endTime, Technicians, isRecurring, recurrencePattern, ...otherEventData } = req.body;
 
     if (!name || !startTime || !endTime) {
       await t.rollback();
@@ -79,7 +79,7 @@ router.post('/', authMiddleware, async (req, res) => {
       startTime,
       endTime,
       isRecurring,
-      recurrencePattern: isRecurring ? rule : null,
+      recurrencePattern: isRecurring ? recurrencePattern : null,
       ...otherEventData
     }, { transaction: t });
 
@@ -91,9 +91,9 @@ router.post('/', authMiddleware, async (req, res) => {
     await event.setTechnicians(techs, { transaction: t });
 
     // Create recurring events if needed
-    if (isRecurring && rule) {
+    if (isRecurring && recurrencePattern) {
       try {
-        await createRecurringEvents(event, rule, t);
+        await createRecurringEvents(event, recurrencePattern, t);
       } catch (error) {
         await t.rollback();
         return res.status(400).json({ error: 'Invalid recurrence rule' });
@@ -124,50 +124,38 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Get events in range
-const fetchEvents = async (startDate, endDate) => {
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    throw new Error('Invalid date range provided');
-  }
-
-  return await Event.findAll({
-    include: [
-      { model: Technician, through: { attributes: [] } },
-      { model: Doctor },
-      { 
-        model: Event,
-        as: 'originalEvent',
-        include: [{ model: Technician }]
-      }
-    ],
-
-    where: {
-      startTime: { [Op.between]: [startDate, endDate] }
-    }
-  });
-};
-
-// Function to be used by other modules (like refresh.js)
 const getEvents = async (start, end) => {
-  const startDate = new Date(start);
-  // Add one day to end date to include the full end date
-  const endDate = new Date(end);
-  endDate.setDate(endDate.getDate() + 1);
+  try {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    endDate.setDate(endDate.getDate() + 1);
 
-  return await fetchEvents(startDate, endDate);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Invalid date range provided');
+    }
+
+    return await Event.findAll({
+      include: [
+        { model: Technician, through: { attributes: [] } },
+        { model: Doctor }
+      ],
+      where: {
+        startTime: { [Op.between]: [startDate, endDate] }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    throw error;
+  }
 };
 
 // Route handler
 const getEventsHandler = async (req, res) => {
   try {
     const { start, end } = req.query;
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    endDate.setDate(endDate.getDate() + 1);
-
-    const expandedEvents = await fetchEvents(startDate, endDate);
-    res.json(expandedEvents);
+    const events = await getEvents(start, end);
+    res.json(events);
   } catch (error) {
-    console.error('Error fetching events:', error);
     res.status(500).json({ error: 'An error occurred while fetching events' });
   }
 };
@@ -233,26 +221,16 @@ router.put('/:id', authMiddleware, async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { updateType = 'single' } = req.query; // 'single', 'all', 'future'
-    const event = await Event.findByPk(req.params.id, {
+    let event = await Event.findByPk(req.params.id, {
       include: [
         { model: Technician },
-        { model: Doctor },
-        { 
-          model: Event,
-          as: 'recurrences',
-          where: updateType === 'future' ? {
-            startTime: { [Op.gte]: new Date(req.body.startTime || new Date()) }
-          } : undefined,
-          required: false
-        }
+        { model: Doctor }
       ]
     });
-
     if (!event) {
       await t.rollback();
       return res.status(404).json({ error: 'Event not found' });
-    }
-
+    } 
     // Handle different update types
     if (updateType === 'single') {
       // Update only this event
@@ -262,6 +240,31 @@ router.put('/:id', authMiddleware, async (req, res) => {
         await event.setTechnicians(req.body.Technicians.map(tech => tech.id), { transaction: t });
       }
     } else if (updateType === 'all' || updateType === 'future') {
+      // Get recurrences
+      let recurrences = [];
+      const searchId = event.originalEventId || event.id;
+      if (searchId) {
+        const whereClause = {
+          [Op.or]: [
+            { id: searchId }, // Include the original event
+            { originalEventId: searchId } // Include all recurrences
+          ]
+        };
+        // For 'future' updates, only get events after this one's start time
+        if (updateType === 'future') {
+          whereClause.startTime = { [Op.gte]: event.startTime };
+        }
+        recurrences = await Event.findAll({
+          where: whereClause,
+          include: [
+            { model: Technician },
+            { model: Doctor }
+          ]
+        });
+      }
+      // Attach the recurrences to the event
+      event.recurrences = recurrences.filter(rec => rec.id !== event.id);
+
       // If recurrence pattern is changing, we need to recreate the recurring events
       if (req.body.recurrencePattern && req.body.recurrencePattern !== event.recurrencePattern) {
         // Delete existing recurrences that we're updating
@@ -284,9 +287,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
         });
 
         // Create new event with updated pattern
+        const { id, ...eventDataWithoutId } = req.body;
         const newEvent = await Event.create({
-          ...req.body,
-          originalEventId: null // This will be the new original event
+          ...eventDataWithoutId,
+          originalEventId: null
         }, { transaction: t });
 
         // Set technicians for the new event
@@ -432,3 +436,5 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+module.exports = {router, getEvents};
