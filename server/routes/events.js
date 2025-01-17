@@ -40,7 +40,7 @@ const createRecurringEvents = async (originalEvent, rule, transaction) => {
       label: originalEvent.label,
       jobNumber: originalEvent.jobNumber,
       isRecurring: true,
-      originalEventId: originalEvent.id,
+      originalEventId: originalEvent.originalEventId || originalEvent.id,
       DoctorId: originalEvent.DoctorId,
       recurrencePattern: rule,
       createdBy: originalEvent.createdBy
@@ -220,7 +220,13 @@ const prepareUpdateData = (originalEvent, requestBody) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { updateType = 'single' } = req.query; // 'single', 'all', 'future'
+    const { updateType = 'single' } = req.query; // 'single' or 'future'
+    if (!['single', 'future'].includes(updateType)) {
+      await t.rollback();
+      return res.status(400).json({ 
+        error: 'Invalid updateType. Must be either "single" or "future"' 
+      });
+    }
     let event = await Event.findByPk(req.params.id, {
       include: [
         { model: Technician },
@@ -230,7 +236,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (!event) {
       await t.rollback();
       return res.status(404).json({ error: 'Event not found' });
-    } 
+    }
     // Handle different update types
     if (updateType === 'single') {
       // Update only this event
@@ -239,7 +245,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       if (req.body.Technicians) {
         await event.setTechnicians(req.body.Technicians.map(tech => tech.id), { transaction: t });
       }
-    } else if (updateType === 'all' || updateType === 'future') {
+    } else if (updateType === 'future') {
       // Get recurrences
       let recurrences = [];
       const searchId = event.originalEventId || event.id;
@@ -248,12 +254,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
           [Op.or]: [
             { id: searchId }, // Include the original event
             { originalEventId: searchId } // Include all recurrences
-          ]
+          ],
+          // For 'future' updates, only get events after this one's start time
+          startTime: { [Op.gte]: event.startTime }
         };
-        // For 'future' updates, only get events after this one's start time
-        if (updateType === 'future') {
-          whereClause.startTime = { [Op.gte]: event.startTime };
-        }
         recurrences = await Event.findAll({
           where: whereClause,
           include: [
@@ -267,30 +271,33 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
       // If recurrence pattern is changing, we need to recreate the recurring events
       if (req.body.recurrencePattern && req.body.recurrencePattern !== event.recurrencePattern) {
-        // Delete existing recurrences that we're updating
-        await Event.destroy({
-          where: {
-            [Op.and]: [
-              { 
-                [Op.or]: [
-                  { id: event.id },
-                  { originalEventId: event.id },
-                  { originalEventId: event.originalEventId }
-                ]
-              },
-              updateType === 'future' 
-                ? { startTime: { [Op.gte]: event.startTime } }
-                : {}
-            ]
-          },
-          transaction: t
-        });
+        // Validate updateType
+        if (updateType === 'all') {
+          await t.rollback();
+          return res.status(400).json({ 
+            error: 'Cannot modify past events. Use "future" to modify upcoming events or "single" for individual events.' 
+          });
+        }
+
+        // Delete this event and relevant recurrences
+        await event.destroy({ transaction: t });
+        if (event.recurrences) {
+          await Promise.all(event.recurrences
+            .filter(recurringEvent => 
+              updateType === 'future' && recurringEvent.startTime >= event.startTime
+            )
+            .map(recurringEvent => 
+              recurringEvent.destroy({ transaction: t })
+            )
+          );
+        }
 
         // Create new event with updated pattern
         const { id, ...eventDataWithoutId } = req.body;
         const newEvent = await Event.create({
           ...eventDataWithoutId,
-          originalEventId: null
+          // For future updates, maintain link to original event
+          // originalEventId: originalId
         }, { transaction: t });
 
         // Set technicians for the new event
@@ -308,22 +315,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
         event = newEvent;
       } else {
         // No pattern change, just regular updates
-        // Update original event if it exists and we're updating all
-        if (updateType === 'all' && event.originalEventId) {
-          const originalEvent = await Event.findByPk(event.originalEventId);
-          if (originalEvent) {
-            const updateData = prepareUpdateData(originalEvent, req.body);
-            await originalEvent.update(updateData, { transaction: t });
-            
-            if (req.body.Technicians) {
-              await originalEvent.setTechnicians(
-                req.body.Technicians.map(tech => tech.id),
-                { transaction: t }
-              );
-            }
-          }
-        }
-
         // Update this event
         await event.update(req.body, { transaction: t });
         if (req.body.Technicians) {
@@ -332,7 +323,6 @@ router.put('/:id', authMiddleware, async (req, res) => {
             { transaction: t }
           );
         }
-
         // Update recurrences
         if (event.recurrences && event.recurrences.length > 0) {
           await Promise.all(event.recurrences.map(async (recurrence) => {
@@ -373,22 +363,12 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { deleteType = 'single' } = req.query; // 'single', 'all', 'future'
-    const event = await Event.findByPk(req.params.id, {
-      include: [{
-        model: Event,
-        as: 'recurrences',
-        where: deleteType === 'future' ? {
-          startTime: { [Op.gte]: new Date() }
-        } : undefined,
-        required: false
-      }]
-    });
-
+    const event = await Event.findByPk(req.params.id);
     if (!event) {
       await t.rollback();
       return res.status(404).json({ error: 'Event not found' });
     }
-
+    const searchId = event.originalEventId || event.id;
     if (deleteType === 'single') {
       await event.destroy({ transaction: t });
     } else if (deleteType === 'all') {
@@ -403,9 +383,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       await Event.destroy({
         where: {
           [Op.or]: [
-            { id: event.id },
-            { originalEventId: event.id },
-            { originalEventId: event.originalEventId }
+            { id: searchId },
+            { originalEventId: searchId }
           ]
         },
         transaction: t
@@ -417,9 +396,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
           [Op.and]: [
             {
               [Op.or]: [
-                { id: event.id },
-                { originalEventId: event.id },
-                { originalEventId: event.originalEventId }
+                { id: searchId },
+                { originalEventId: searchId }
               ]
             },
             { startTime: { [Op.gte]: event.startTime } }

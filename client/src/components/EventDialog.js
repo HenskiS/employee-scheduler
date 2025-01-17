@@ -20,9 +20,10 @@ import axios from '../api/axios';
 import { useScheduling } from './SchedulingContext';
 import RecurringEventForm from './RecurringEventForm';
 import TechnicianSelector from './TechnicianSelector';
+import RecurringEventChoiceDialog from './RecurringEventChoiceDialog';
 
 function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
-  const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
+  const { technicians, doctors, labels, throughThirty } = useScheduling();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -43,6 +44,8 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
     startTime: '',
     endTime: ''
   });
+  const [showRecurringChoice, setShowRecurringChoice] = useState(false);
+  const [recurringAction, setRecurringAction] = useState(null);
 
   useEffect(() => {
     if (event) {
@@ -130,7 +133,12 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
   };
 
   const handleSubmit = () => {
-    if (validateForm()) {
+    if (!validateForm()) return;
+    
+    if (event?.isRecurring) {
+      setRecurringAction('edit');
+      setShowRecurringChoice(true);
+    } else {
       onSave({
         ...formData,
         startTime: formData.startTime.toISOString(),
@@ -140,13 +148,29 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm("Are you sure you wish to delete this event?")) {
-      if (!event?.isRecurring || window.confirm("Deleting a recurring event will delete all future instances of this event. Are you sure?")) {
-        onDelete();
-        onClose();
-      }
+  const handleDelete = () => {
+    if (event?.isRecurring) {
+      setRecurringAction('delete');
+      setShowRecurringChoice(true);
+    } else if (window.confirm("Are you sure you wish to delete this event?")) {
+      onDelete();
+      onClose();
     }
+  };
+  const handleRecurringChoice = (choice) => {
+    setShowRecurringChoice(false);
+    if (!choice) return;
+
+    if (recurringAction === 'edit') {
+      onSave({
+        ...formData,
+        startTime: formData.startTime.toISOString(),
+        endTime: formData.endTime.toISOString(),
+      }, choice);
+    } else if (recurringAction === 'delete') {
+      onDelete(choice);
+    }
+    onClose();
   };
 
   const handleSave = (rrule) => {
@@ -155,6 +179,7 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
   };
 
   return (
+    <>
     <LocalizationProvider dateAdapter={AdapterMoment}>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
         <DialogTitle>{event ? 'Edit Event' : 'New Event'}</DialogTitle>
@@ -317,6 +342,13 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
         </DialogActions>
       </Dialog>
     </LocalizationProvider>
+    <RecurringEventChoiceDialog
+      open={showRecurringChoice}
+      onClose={() => setShowRecurringChoice(false)}
+      onChoice={handleRecurringChoice}
+      mode={recurringAction}
+    />
+    </>
   );
 }
 

@@ -21,8 +21,6 @@ const MyCalendar = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { colorMap } = useScheduling();
   const [currentView, setCurrentView] = useState('day'); // cal view (day/agenda)
-  const [showRecurringChoice, setShowRecurringChoice] = useState(false);
-  const [updateType, setUpdateType] = useState(null);
 
   // Modified to handle both job numbers and technician resources
   useEffect(() => {
@@ -52,11 +50,7 @@ const MyCalendar = () => {
     const event = findEventById(e.id);
     setSelectedEvent(event);
     setNewEvent(null);
-    if (event?.isRecurring) {
-      setShowRecurringChoice(true)
-    } else {
-      setIsDialogOpen(true);
-    }
+    setIsDialogOpen(true); 
   };
 
   const handleSelectSlot = (slotInfo) => {
@@ -84,7 +78,7 @@ const MyCalendar = () => {
     setSelectedEvent(null);
   };
 
-  const handleSaveEvent = async (event) => {
+  const handleSaveEvent = async (event, updateType = 'single') => {
     try {
       if (event.id) {
         await axios.put(`/events/${event.id}?updateType=${updateType}`, event);
@@ -97,10 +91,10 @@ const MyCalendar = () => {
       console.error('Error saving event:', error);
     }
   };
-  const handleDeleteEvent = async () => {
+  const handleDeleteEvent = async (deleteType = 'single') => {
     if (selectedEvent?.id) {
       try {
-        await axios.delete(`/events/${selectedEvent.id}?deleteType=${updateType ?? 'single'}`);
+        await axios.delete(`/events/${selectedEvent.id}?deleteType=${deleteType}`);
         refreshData();
       } catch (error) {
         console.error('Error deleting event:', error);
@@ -133,14 +127,6 @@ const MyCalendar = () => {
       setSelectedDate(date);
     }
   };
-
-  const handleRecurringChoice = (choice) => {
-    if (!choice) setSelectedEvent(null);
-    setShowRecurringChoice(false);
-    setUpdateType(choice)
-    setNewEvent(null)
-    setIsDialogOpen(true)
-  }
 
   const processEvents = () => {
     return events.flatMap(event => {
@@ -224,13 +210,6 @@ const MyCalendar = () => {
           onDelete={handleDeleteEvent}
         />
       )}
-      <RecurringEventChoiceDialog
-        open={showRecurringChoice}
-        onClose={() => {
-          setShowRecurringChoice(false);
-        }}
-        onChoice={handleRecurringChoice}
-      />
       <Calendar
         localizer={localizer}
         events={processEvents()}
