@@ -42,7 +42,14 @@ function Login({ onLoginSuccess }) {
   };
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'flex-start',
+        minHeight: '100vh',
+        pt: { xs: 6, sm: 12 },  // 48px padding-top on mobile, 96px on tablet/desktop
+        bgcolor: '#f5f7fa'  // Light grayish-blue background
+      }}>
       <Paper elevation={3} sx={{ padding: 4, width: 300 }}>
         <Typography variant="h5" component="h1" gutterBottom>
           Login

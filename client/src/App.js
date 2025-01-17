@@ -49,28 +49,28 @@ function App() {
     <>
       <CssBaseline />
       <Header isAuthenticated={isAuthenticated} logout={handleLogout} />
-      <Container maxWidth={false}>
-        <SchedulingProvider>
-          <Routes>
-            <Route 
-              path="/login" 
-              element={
-                isAuthenticated ? 
-                <Navigate to="/" replace /> : 
-                <Login onLoginSuccess={handleLoginSuccess} />
-              } 
-            />
-            <Route
-              path="/"
-              element={
+      <SchedulingProvider>
+        <Routes>
+          <Route 
+            path="/login" 
+            element={
+              isAuthenticated ? 
+              <Navigate to="/" replace /> : 
+              <Login onLoginSuccess={handleLoginSuccess} />
+            } 
+          />
+          <Route
+            path="/"
+            element={
+              <Container maxWidth={false}>
                 <ProtectedRoute isLoading={isLoading}>
                   <Schedule />
                 </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </SchedulingProvider>
-      </Container>
+              </Container>
+            }
+          />
+        </Routes>
+      </SchedulingProvider>
     </>
   );
 }
