@@ -30,9 +30,9 @@ th {
   font-weight: bold;
 }
 
-tr:nth-child(even) {
+/* tr:nth-child(even) {
   background-color: #f9f9f9;
-}
+} */
 
 tr:hover {
   background-color: #f5f5f5;
@@ -240,11 +240,14 @@ td:hover {
   min-height: fit-content;
 }
 
-.calendar-agenda {
+/* .calendar-agenda {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 16px;
+} */
+.calendar-agenda {
+  width: 100%;
 }
 
 .print-controls {
@@ -295,64 +298,115 @@ td:hover {
 .out-of-range .calendar-events {
   opacity: 0.6;
 }
-.agenda-table {
+/* .agenda-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+} */
+.agenda-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
 .agenda-header {
+  padding: 8px 12px;
   text-align: left;
-  padding: 8px;
-  border-bottom: 1px solid #ddd;
-  font-weight: 500;
-  color: #666;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #4a5568;
+  background-color: #f7fafc;
 }
 
-.agenda-row {
+.agenda-header:first-child {
+  width: 100px;
+}
+.agenda-header:nth-child(2) {
+  width: 160px;
+}
+
+/* .agenda-row {
   border-bottom: 1px solid #f0f0f0;
   page-break-inside: avoid;
   break-inside: avoid;
+} */
+.agenda-row {
+  border-top: 1px solid #e2e8f0;
 }
-
 .agenda-date {
-  padding: 12px 8px;
+  padding: 4px 12px;
   vertical-align: top;
-  font-weight: 500;
-  width: 120px;
-  white-space: nowrap;
+  font-size: 0.875rem;
+  color: #4a5568;
 }
 
 .agenda-time {
-  padding: 12px 8px;
-  vertical-align: top;
-  width: 150px;
-  white-space: nowrap;
-  color: #666;
+  padding: 4px 12px;
+  font-size: 0.875rem;
+  color: #4a5568;
 }
-
 .agenda-event {
-  padding: 12px 8px;
-  vertical-align: top;
+  padding: 2px 6px;
 }
-
 .agenda-event-content {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
 }
-
 .agenda-event-color-indicator {
   width: 4px;
-  /* height: 24px; */
   align-self: stretch;
+  margin-right: 8px;
   border-radius: 2px;
-  flex-shrink: 0;
+}
+.agenda-event-details {
+  flex: 1;
+  min-width: 0;
+}
+.agenda-event-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-right: 8px;
+}
+.agenda-event-description {
+  font-size: 0.75rem;
+  color: #4a5568;
+  /* margin-top: 2px; */
+}
+.agenda-event-label {
+  font-size: 0.75rem;
+  color: #718096;
+  /* margin-top: 2px; */
+}
+.agenda-event-doctor-name,
+.agenda-event-doctor-address,
+.agenda-event-doctor-phone {
+  font-size: 0.75rem;
+  color: #4a5568;
+  /* margin-top: 2px; */
+  /* margin-left: 8px; */
+}
+.agenda-event-doctor-details {
+  font-size: 0.75rem;
+  color: #4a5568;
 }
 
-.agenda-event-title {
-  flex-grow: 1;
-  font-weight: 600;
+.agenda-event-doctor-name,
+.agenda-event-doctor-address,
+.agenda-event-doctor-phone {
+  /* margin-bottom: 2px; */
+}
+.agenda-details {
+  padding: 0px 6px;
+}
+.agenda-notes {
+  /* padding: 8px; */
+  padding: 0px 6px;
+  vertical-align: top;
+  min-width: 150px;
+}
+.agenda-event-notes {
+  font-size: 0.9em;
+  /* color: #666; */
+  white-space: pre-wrap;
 }
 /* @media print {
   .calendar-container {
