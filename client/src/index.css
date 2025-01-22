@@ -346,6 +346,8 @@ td:hover {
 }
 .agenda-event {
   padding: 2px 6px;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 .agenda-event-content {
   display: flex;
