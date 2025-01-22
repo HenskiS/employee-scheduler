@@ -3,7 +3,7 @@ import React from 'react';
 import moment from 'moment';
 import { useScheduling } from './SchedulingContext';
 
-const AgendaView = ({ events, filterParams }) => {
+const AgendaView = ({ events, filterParams, onSelectEvent }) => {
   const { colorMap, labels } = useScheduling();
   
   const sortedEvents = [...events].sort((a, b) => new Date(a.start) - new Date(b.start));
@@ -62,7 +62,14 @@ const AgendaView = ({ events, filterParams }) => {
         <tbody>
           {Object.entries(eventsByDate).map(([dateKey, dateEvents]) => (
             dateEvents.map((event, index) => (
-              <tr key={`${dateKey}-${index}`} className="agenda-row">
+              <tr 
+                key={`${dateKey}-${index}`} 
+                className="agenda-row"
+                onClick={() => onSelectEvent(event)}
+                style={{ cursor: 'pointer' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
+              >
                 {index === 0 && (
                   <td className="agenda-date" rowSpan={dateEvents.length}>
                     {dateKey}
@@ -88,11 +95,6 @@ const AgendaView = ({ events, filterParams }) => {
                           {labels?.find(l => l.value === event.label)?.label}
                         </span>
                       )}
-                      {/* filterParams.displayOptions?.showDescription && event.description && (
-                        <div className="agenda-event-description">
-                          {event.description}
-                        </div>
-                      ) */}
                       {filterParams.displayOptions?.showTechnicians && event.Technicians && (
                         <div className="agenda-event-label">
                           {event.Technicians.map(t => t.name).join(', ')}

@@ -16,7 +16,6 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
-import axios from '../api/axios';
 import { useScheduling } from './SchedulingContext';
 import RecurringEventForm from './RecurringEventForm';
 import TechnicianSelector from './TechnicianSelector';
@@ -42,7 +41,8 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
   const [errors, setErrors] = useState({
     name: '',
     startTime: '',
-    endTime: ''
+    endTime: '',
+    jobNumber: ''
   });
   const [showRecurringChoice, setShowRecurringChoice] = useState(false);
   const [recurringAction, setRecurringAction] = useState(null);
@@ -59,7 +59,8 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
       setErrors({
         name: '',
         startTime: '',
-        endTime: ''
+        endTime: '',
+        jobNumber: ''
       });
     } else if (newEvent) {
       setFormData({
@@ -76,13 +77,20 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
     const newErrors = {
       name: '',
       startTime: '',
-      endTime: ''
+      endTime: '',
+      jobNumber: ''
     };
     let isValid = true;
 
     // Validate name
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+      isValid = false;
+    }
+
+    // Validate job number
+    if (!formData.jobNumber || !formData.jobNumber.trim()) {
+      newErrors.jobNumber = 'Job number is required';
       isValid = false;
     }
 
@@ -321,6 +329,7 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
             fullWidth
             value={formData.jobNumber}
             onChange={handleInputChange}
+            error={!!errors.jobNumber}
           >
             {throughThirty.map((num) => (
               <MenuItem key={num} value={num}>
@@ -328,6 +337,9 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
               </MenuItem>
             ))}
           </TextField>
+          {errors.jobNumber && (
+            <FormHelperText error>{errors.jobNumber}</FormHelperText>
+          )}
         </DialogContent>
         <DialogActions>
           {event && (

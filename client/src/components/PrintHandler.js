@@ -8,7 +8,7 @@ import { Button } from '@mui/material';
 const PrintHandler = ({events = [], view = "month", dateRange, close, filterParams}) => {
     const { colorMap, labels } = useScheduling();
 
-    const EventComponent = ({ event }) => {
+    const EventComponent = ({ event, onClick }) => {
         const backgroundColor = colorMap[event.label] || '#3174ad';
     
         const startTime = moment(event.start).format('h:mma');
@@ -19,8 +19,14 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
         const doctor = event.Doctor || {};
         
         return (
-            <div className="print-event-text-container">
-                <div style={{ // color: backgroundColor for colored text, below for color bars
+            <div 
+                className="print-event-text-container"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick?.(event);
+                }}
+            >
+                <div style={{
                     borderLeft: `3px solid ${backgroundColor}`,
                     paddingLeft: '4px'
                 }} className="print-event-text">

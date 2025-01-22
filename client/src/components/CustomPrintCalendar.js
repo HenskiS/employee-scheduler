@@ -1,7 +1,9 @@
-// Calendar.js (main component)
-import React from 'react';
+import React, { useState } from 'react';
+import axios from '../api/axios';
 import AgendaView from './AgendaView';
 import GridCalendarView from './GridCalendarView';
+import EventDialog from './EventDialog';
+import { useScheduling } from './SchedulingContext';
 
 const Calendar = ({ 
   date,
@@ -10,8 +12,64 @@ const Calendar = ({
   components = {},
   showAllEvents = true,
   dateRange = null,
-  filterParams = {}
+  filterParams = {},
 }) => {
+  const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [newEvent, setNewEvent] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleSelectEvent = (event) => {
+    setSelectedEvent(event);
+    setNewEvent(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleSelectSlot = (slotInfo) => {
+    const { start, end, resourceId } = slotInfo;
+    const newEventData = {
+      start,
+      end,
+      resourceId,
+      allDay: false
+    };
+    setSelectedEvent(null);
+    setNewEvent(newEventData);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedEvent(null);
+    setNewEvent(null);
+  };
+
+  const handleSaveEvent = async (event, updateType = 'single') => {
+    try {
+      if (event.id) {
+        await axios.put(`/events/${event.id}?updateType=${updateType}`, event);
+      } else {
+        await axios.post('/events', event);
+      }
+      refreshData();
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Error saving event:', error);
+    }
+  };
+
+  const handleDeleteEvent = async (deleteType = 'single') => {
+    if (selectedEvent?.id) {
+      try {
+        await axios.delete(`/events/${selectedEvent.id}?deleteType=${deleteType}`);
+        refreshData();
+        handleCloseDialog();
+      } catch (error) {
+        console.error('Error deleting event:', error);
+      }
+    }
+  };
+
   const isDateInRange = (date) => {
     if (!dateRange) return true;
     
@@ -104,10 +162,21 @@ const Calendar = ({
 
   return (
     <div className="custom-calendar">
+      {isDialogOpen && (
+        <EventDialog
+          open={isDialogOpen}
+          event={selectedEvent}
+          newEvent={newEvent}
+          onClose={handleCloseDialog}
+          onSave={handleSaveEvent}
+          onDelete={handleDeleteEvent}
+        />
+      )}
       {view === 'agenda' ? (
         <AgendaView 
           events={events} 
-          filterParams={filterParams} 
+          filterParams={filterParams}
+          onSelectEvent={handleSelectEvent}
         />
       ) : (
         <GridCalendarView 
@@ -116,6 +185,8 @@ const Calendar = ({
           view={view}
           components={components}
           days={days}
+          onSelectEvent={handleSelectEvent}
+          onSelectSlot={handleSelectSlot}
         />
       )}
     </div>

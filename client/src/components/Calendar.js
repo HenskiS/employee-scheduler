@@ -7,7 +7,6 @@ import '../CalendarStyles.css';
 import EventDialog from './EventDialog';
 import { useScheduling } from './SchedulingContext';
 import CalendarHeader from './CalendarHeader';
-import RecurringEventChoiceDialog from './RecurringEventChoiceDialog';
 
 const localizer = momentLocalizer(moment);
 
