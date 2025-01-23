@@ -40,13 +40,6 @@ function Schedule() {
     }
   }, [events, filterParams]);
 
-  // Open print calendar when we have filtered events
-  useEffect(() => {
-    if (filteredEvents.length) {
-      setIsPrintCalendarOpen(true);
-    }
-  }, [filteredEvents]);
-
   const handleOpenPeopleDialog = () => {
     setIsPeopleDialogOpen(true);
   };
@@ -71,6 +64,7 @@ function Schedule() {
     // Update the date range in context
     updateDateRange(params.startDate, params.endDate);
     setFilterParams(params);
+    setIsPrintCalendarOpen(true)
   };
 
   return (
