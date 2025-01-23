@@ -72,7 +72,7 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
     };
 
     const CustomToolbar = ({ date, view }) => {
-        if (view === 'month' || view === 'agenda') {
+        if (view === 'month') {
             return (
                 <div className="print-cal-month">
                     {moment(date).format('MMMM YYYY')}
@@ -84,14 +84,47 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                     {`Week of ${moment(date).startOf('week').format('MMMM D, YYYY')}`}
                 </div>
             );
-        }/*  else {
+        } else if (view === 'agenda') {
+            const currentMonth = moment(date);
+            const monthStart = currentMonth.clone().startOf('month');
+            const monthEnd = currentMonth.clone().endOf('month');
+            
+            let displayStart = monthStart;
+            let displayEnd = monthEnd;
+            
+            // If dateRange exists, adjust start/end dates
+            if (dateRange) {
+                const rangeStart = moment(dateRange.start);
+                const rangeEnd = moment(dateRange.end);
+                
+                // If this month includes the range start, use it
+                if (rangeStart.isSame(currentMonth, 'month')) {
+                    displayStart = rangeStart;
+                }
+                
+                // If this month includes the range end, use it
+                if (rangeEnd.isSame(currentMonth, 'month')) {
+                    displayEnd = rangeEnd;
+                }
+            }
+            
+            // Format the display text
+            let displayText;
+            if (displayStart.isSame(monthStart, 'day') && displayEnd.isSame(monthEnd, 'day')) {
+                // Full month
+                displayText = currentMonth.format('MMMM YYYY');
+            } else {
+                // Partial month
+                displayText = `${displayStart.format('MMMM D')}-${displayEnd.format('D YYYY')}`;
+            }
+            
             return (
-                <div className="print-cal-agenda">
-                    {`Events: ${moment(dateRange.start).format('MMMM D, YYYY')} - ${moment(dateRange.end).format('MMMM D, YYYY')}`}
+                <div className="print-cal-month">
+                    {displayText}
                 </div>
             );
-        } */
-    };
+        }
+    }
 
     const getPeriods = () => {
         if (!dateRange) {
