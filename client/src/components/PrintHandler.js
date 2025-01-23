@@ -4,8 +4,7 @@ import Calendar from './CustomPrintCalendar';
 import { useScheduling } from './SchedulingContext';
 import { Button } from '@mui/material';
 
-
-const PrintHandler = ({events = [], view = "month", dateRange, close, filterParams}) => {
+const PrintHandler = ({events = [], view = "month", dateRange, close, filterParams, onEdit}) => {
     const { colorMap, labels } = useScheduling();
 
     const EventComponent = ({ event, onClick }) => {
@@ -73,7 +72,7 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
     };
 
     const CustomToolbar = ({ date, view }) => {
-        if (view === 'month') {
+        if (view === 'month' || view === 'agenda') {
             return (
                 <div className="print-cal-month">
                     {moment(date).format('MMMM YYYY')}
@@ -85,13 +84,13 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                     {`Week of ${moment(date).startOf('week').format('MMMM D, YYYY')}`}
                 </div>
             );
-        } else {
+        }/*  else {
             return (
                 <div className="print-cal-agenda">
                     {`Events: ${moment(dateRange.start).format('MMMM D, YYYY')} - ${moment(dateRange.end).format('MMMM D, YYYY')}`}
                 </div>
             );
-        }
+        } */
     };
 
     const getPeriods = () => {
@@ -146,6 +145,9 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
             <div className="print-controls no-print">
                 <Button onClick={handleCancel} variant="outlined" className="print-button">
                     Cancel
+                </Button>
+                <Button onClick={onEdit} variant="outlined" className="print-button">
+                    Edit
                 </Button>
                 <Button onClick={handlePrint} variant="outlined" className="print-button">
                     Print

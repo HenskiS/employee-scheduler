@@ -45,6 +45,10 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
       </div>
     );
   };
+  const isDescription = filterParams.displayOptions?.showDescription;
+  const isDocInfo = filterParams.displayOptions?.doctorInfo?.showName || 
+                    filterParams.displayOptions?.doctorInfo?.showPhone || 
+                    filterParams.displayOptions?.doctorInfo?.showAddress;
 
   return (
     <div className="calendar-agenda">
@@ -54,9 +58,10 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
             <th className="agenda-header">Date</th>
             <th className="agenda-header">Time</th>
             <th className="agenda-header">Event</th>
-            {filterParams.displayOptions?.showDescription && 
+            {isDescription && 
                 <th className="agenda-header">Description</th>}
-            <th className="agenda-header">Doctor</th>
+            {isDocInfo && 
+              <th className="agenda-header">Doctor</th>}           
           </tr>
         </thead>
         <tbody>
@@ -103,7 +108,7 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
                     </div>
                   </div>
                 </td>
-                {filterParams.displayOptions?.showDescription &&
+                {isDescription &&
                 <td className="agenda-details">
                   {event.description && (
                     <div className="agenda-event-description">
@@ -111,9 +116,10 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
                     </div>
                   )}
                 </td>}
+                {isDocInfo &&
                 <td className="agenda-details">
                   {renderDoctorInfo(event)}
-                </td>
+                </td>}
               </tr>
             ))
           ))}

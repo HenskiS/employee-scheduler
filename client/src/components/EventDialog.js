@@ -237,8 +237,9 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
               setFormData({ ...formData, Technicians: newTechnicians });
             }}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0px' }}>
-            <div>
+          
+          <div className='event-dates-container'>           
+            <div className='date-picker'>
               <DateTimePicker
                 label="Start"
                 value={formData.startTime}
@@ -254,7 +255,7 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
                 <FormHelperText error>{errors.startTime}</FormHelperText>
               )}
             </div>
-            <div>
+            <div className='date-picker'>
               <DateTimePicker
                 label="End"
                 value={formData.endTime}

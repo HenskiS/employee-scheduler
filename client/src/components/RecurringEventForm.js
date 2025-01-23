@@ -116,6 +116,7 @@ const RecurringEventForm = ({ startDate, rrule, onChange }) => {
           label="Frequency"
           value={formState.frequency}
           onChange={(e) => updateFormState({ frequency: e.target.value })}
+          style={{flex: 2, marginRight: '10px'}}
         >
           <MenuItem value="DAILY">Daily</MenuItem>
           <MenuItem value="WEEKLY">Weekly</MenuItem>
@@ -128,6 +129,7 @@ const RecurringEventForm = ({ startDate, rrule, onChange }) => {
           label="Interval"
           value={formState.interval}
           onChange={(e) => updateFormState({ interval: e.target.value })}
+          style={{flex: 1}}
         />
       </div>
       {formState.frequency === 'WEEKLY' && (

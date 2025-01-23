@@ -453,6 +453,26 @@ td:hover {
   color: #666;
 } */
 
+.event-dates-container {
+  display: flex;
+  justify-content: space-between;
+}
+
+@media screen and (max-width: 600px) {
+  .event-dates-container {
+    flex-direction: column;
+  }
+  
+  .event-dates-container .date-picker {
+    margin: 5px 0px;
+    width: 100%;  /* Make the container full width */
+  }
+  
+  .event-dates-container .date-picker .MuiTextField-root {
+    width: 100%;  /* Make the actual date picker input full width */
+  }
+}
+
 /* Print-specific overrides */
 @media print {
   .calendar-cell {
