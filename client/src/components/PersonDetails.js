@@ -31,7 +31,12 @@ const FIELD_CONFIGS = {
     { key: 'name', label: 'Name', required: true },
     { key: 'email', label: 'Email', required: true },
     { key: 'phoneNumber', label: 'Phone' },
-    { key: 'experienceLevel', label: 'Expertise Level' }
+    { key: 'address1', label: 'Address' },
+    { key: 'city', label: 'City' },
+    { key: 'state', label: 'State' },
+    { key: 'zip', label: 'Zip' },
+    { key: 'experienceLevel', label: 'Expertise Level' },
+    { key: 'notes', label: 'Notes', multiline: true, rows: 4 }
   ],
   2: [ // Users
     { key: 'name', label: 'Name', required: true },
