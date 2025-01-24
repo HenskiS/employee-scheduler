@@ -14,6 +14,7 @@ function Schedule() {
   const [tabValue, setTabValue] = useState(0);
   const [isPeopleDialogOpen, setIsPeopleDialogOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
+  const [shouldResetPrintDialog, setShouldResetPrintDialog] = useState(false);
   const [isPrintCalendarOpen, setIsPrintCalendarOpen] = useState(false);
   const [filterParams, setFilterParams] = useState();
   
@@ -56,6 +57,9 @@ function Schedule() {
   };
 
   const handleOpenPrintDialog = () => {
+    if (isPrintCalendarOpen) {
+      setShouldResetPrintDialog(false);
+    }
     setIsPrintDialogOpen(true);
   };
 
@@ -65,7 +69,9 @@ function Schedule() {
 
   const handleClosePrintCalendar = () => {
     setIsPrintCalendarOpen(false);
+    setFilterParams(null);
     setIsPrintDialogOpen(false);
+    setShouldResetPrintDialog(true);
   };
 
   const handlePrint = (params) => {
@@ -113,7 +119,7 @@ function Schedule() {
         open={isPrintDialogOpen} 
         onClose={handleClosePrintDialog}
         onPrint={handlePrint}
-        initialValues={filterParams} // Pass the current filter params
+        shouldReset={shouldResetPrintDialog}
       />
     </>
   );

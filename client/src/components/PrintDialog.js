@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogTitle, 
@@ -13,7 +13,6 @@ import {
   ListItemText, 
   Box, 
   Alert,
-  FormGroup,
   FormControlLabel,
   Typography
 } from '@mui/material';
@@ -21,7 +20,18 @@ import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { useScheduling } from './SchedulingContext';
 
-const PrintDialog = ({ open, onClose, onPrint }) => {
+const defaultDisplayOptions = {
+  showDescription: true,
+  showLabel: true,
+  showTechnicians: true,
+  doctorInfo: {
+    showName: true,
+    showAddress: false,
+    showPhone: false,
+  }
+};
+
+const PrintDialog = ({ open, onClose, onPrint, shouldReset }) => {
   const { technicians, doctors, labels } = useScheduling();
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -30,18 +40,21 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
   const [selectedTechnicians, setSelectedTechnicians] = useState([]);
   const [selectedView, setSelectedView] = useState('month');
   const [dateError, setDateError] = useState(false);
-  
-  // New state for display options
-  const [displayOptions, setDisplayOptions] = useState({
-    showDescription: true,
-    showLabel: true,
-    showTechnicians: true,
-    doctorInfo: {
-      showName: true,
-      showAddress: false,
-      showPhone: false,
+  const [displayOptions, setDisplayOptions] = useState(defaultDisplayOptions);
+
+  // Reset state only when shouldReset is true
+  useEffect(() => {
+    if (shouldReset && open) {
+      setStartDate(null);
+      setEndDate(null);
+      setSelectedLabels([]);
+      setSelectedDoctors([]);
+      setSelectedTechnicians([]);
+      setSelectedView('month');
+      setDateError(false);
+      setDisplayOptions(defaultDisplayOptions);
     }
-  });
+  }, [shouldReset, open]);
 
   const handleDisplayOptionChange = (option) => {
     if (option.startsWith('doctor.')) {
@@ -92,7 +105,6 @@ const PrintDialog = ({ open, onClose, onPrint }) => {
     };
 
     onPrint(filterParams);
-    onClose();
   };
 
   const ITEM_HEIGHT = 48;
