@@ -93,7 +93,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             const response = await axios.get(`/refresh?start=${dateRange.start}&end=${dateRange.end}`);
             const { data: { doctors, technicians, users, events } } = response.data;
 
-            setDoctors(doctors.sort((a, b) => a.name.localeCompare(b.name)));
+            setDoctors(doctors.sort((a, b) => a.customer.localeCompare(b.customer)));
             setTechnicians(technicians.sort((a, b) => a.name.localeCompare(b.name)));
             setUsers(users.sort((a, b) => a.name.localeCompare(b.name)));
             setEvents(events);

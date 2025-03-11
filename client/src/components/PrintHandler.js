@@ -37,14 +37,13 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                     )}
                     {event.Doctor && Object.values(doctorOptions).some(Boolean) && (
                         <>
-                            <div className="print-event-description">{doctorOptions.showName && doctor?.name} </div>
+                            <div className="print-event-description">{doctorOptions.showName && doctor?.customer} </div>
                             <div className="print-event-description">{doctorOptions.showAddress && [
-                                    doctor?.address1,
-                                    doctor?.address2,
+                                    doctor?.physicalAddress,
                                     doctor?.city,
                                     doctor?.zip
                                 ].filter(Boolean).join(', ')}</div>
-                            <div className="print-event-description">{doctorOptions.showPhone && doctor?.phone}</div>   
+                            <div className="print-event-description">{doctorOptions.showPhone && doctor?.mainPhone}</div>   
                         </>           
                     )}
                     {event.Technicians && displayOptions?.showTechnicians && (

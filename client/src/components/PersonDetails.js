@@ -17,14 +17,26 @@ import axios from '../api/axios';
 
 const FIELD_CONFIGS = {
   0: [ // Doctors
-    { key: 'name', label: 'Name', required: true },
-    { key: 'email', label: 'Email' },
-    { key: 'phoneNumber', label: 'Phone' },
-    { key: 'address1', label: 'Address1' },
-    { key: 'address2', label: 'Address2' },
+    { key: 'customer', label: 'Customer', required: true },
+    { key: 'practiceName', label: 'Practice Name', required: true },
+    { key: 'physicalAddress', label: 'Physical Address' },
     { key: 'city', label: 'City' },
     { key: 'state', label: 'State' },
     { key: 'zip', label: 'Zip' },
+    { key: 'schedulingContact1', label: 'Scheduling Contact #1' },
+    { key: 'schedulingPhone1', label: 'Scheduling Phone #1' },
+    { key: 'schedulingEmail1', label: 'Scheduling Email #1' },
+    { key: 'schedulingContact2', label: 'Scheduling Contact #2' },
+    { key: 'schedulingPhone2', label: 'Scheduling Phone #2' },
+    { key: 'schedulingEmail2', label: 'Scheduling Email #2' },
+    { key: 'billTo', label: 'Bill to' },
+    { key: 'billingAddress', label: 'ADDRESS' },
+    { key: 'billingCity', label: 'CITY' },
+    { key: 'billingState', label: 'STATE' },
+    { key: 'billingZip', label: 'ZIP' },
+    { key: 'billingContact', label: 'Billing Contact' },
+    { key: 'mainPhone', label: 'Main Phone' },
+    { key: 'fax', label: 'Fax' },
     { key: 'notes', label: 'Notes', multiline: true, rows: 4 }
   ],
   1: [ // Technicians
@@ -120,7 +132,7 @@ const PersonDetails = ({
         response = await axios.put(`/${personTypeEndpoint}/${dataToSend.id}`, dataToSend);
       }
 
-      setSuccessMessage(`Successfully ${isAdding ? 'added' : 'updated'} ${formData.name}`);
+      setSuccessMessage(`Successfully ${isAdding ? 'added' : 'updated'} ${formData.name || formData.customer}`);
       onSave(response.data);
     } catch (err) {
       setError(
@@ -133,14 +145,14 @@ const PersonDetails = ({
   };
 
   const handleDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete ${person.name}?`)) {
+    if (window.confirm(`Are you sure you want to delete ${person.name || formData.customer}?`)) {
       setLoading(true);
       setError(null);
       
       try {
         const personTypeEndpoint = PERSON_TYPES[personType];
         await axios.delete(`/${personTypeEndpoint}/${formData.id}`);
-        setSuccessMessage(`Successfully deleted ${formData.name}`);
+        setSuccessMessage(`Successfully deleted ${formData.name || formData.customer}`);
         onDelete(formData.id);
       } catch (err) {
         setError(
@@ -176,7 +188,7 @@ const PersonDetails = ({
   return (
     <Box sx={{ width: isMobile ? '100%' : '45%', pl: 2, pr: 2, overflowY: 'auto' }}>
       <Typography variant="h6" sx={{ mb: 2, mt: 2 }}>
-        {isAdding ? `Add New ${PERSON_TYPES[personType].slice(0, -1)}` : formData.name}
+        {isAdding ? `Add New ${PERSON_TYPES[personType].slice(0, -1)}` : formData.name || formData.customer}
       </Typography>
       <Divider sx={{ mb: 2 }} />
       

@@ -24,14 +24,13 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
       <div className="agenda-event-doctor-details">
         {filterParams.displayOptions.doctorInfo.showName && (
           <div className="agenda-event-doctor-name">
-            {event.Doctor.name}
+            {event.Doctor.customer}
           </div>
         )}
         {filterParams.displayOptions.doctorInfo.showAddress && (
           <div className="agenda-event-doctor-address">
             {[
-              event.Doctor.address1,
-              event.Doctor.address2,
+              event.Doctor.physicalAddress,
               event.Doctor.city,
               event.Doctor.zip
             ].filter(Boolean).join(', ')}
@@ -39,7 +38,7 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
         )}
         {filterParams.displayOptions.doctorInfo.showPhone && (
           <div className="agenda-event-doctor-phone">
-            {event.Doctor.phoneNumber}
+            {event.Doctor.mainPhone}
           </div>
         )}
       </div>

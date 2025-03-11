@@ -220,7 +220,7 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
             name="doctor"
             label="Doctor"
             options={doctors}
-            getOptionLabel={option => option.name}
+            getOptionLabel={option => option.customer}
             value={formData.DoctorId ? doctors.filter(doc => doc.id === formData.DoctorId)[0] : null}
             onChange={(event, newValue) => {
               handleInputChange({

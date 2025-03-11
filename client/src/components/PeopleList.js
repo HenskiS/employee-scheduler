@@ -11,9 +11,24 @@ const PeopleList = ({
   onPersonSelect,
   onAddNew
 }) => {
-  const filteredPeople = people.filter((person) =>
-    person.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getDisplayName = (person) => {
+    if (person.customer) {
+      return person.customer;
+    }
+    else if (person.practiceName) {
+      return person.practiceName;
+    }
+    else if (person.name) {
+      return person.name;
+    }
+    return 'Unnamed';
+  };
+
+  const filteredPeople = people.filter((person) => {
+    const displayName = getDisplayName(person);
+    return displayName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+  
   const isMobile = useMediaQuery('(max-width:800px)');
 
   return (
@@ -27,13 +42,12 @@ const PeopleList = ({
         InputProps={{
           startAdornment: <Search sx={{ color: 'action.active', mr: 1 }} />,
         }}
-        sx={{ /* mb: 2, */ mt: 1 /* 2 */ }}
+        sx={{ mt: 1 }}
       />
       <List sx={{ flexGrow: 1, overflowY: 'auto' }}>
         {filteredPeople.map((person) => (
           <ListItem
             key={person.id}
-            //button
             onClick={() => onPersonSelect(person)}
             selected={selectedPerson?.id === person.id}
             sx={{
@@ -42,7 +56,7 @@ const PeopleList = ({
             }}
           >
             <ListItemText
-              primary={person.name}
+              primary={getDisplayName(person)}
               primaryTypographyProps={{
                 fontWeight: selectedPerson?.id === person.id ? 'bold' : 'normal',
               }}
@@ -62,4 +76,4 @@ const PeopleList = ({
   );
 };
 
-export default PeopleList
+export default PeopleList;

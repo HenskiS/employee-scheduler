@@ -2,15 +2,15 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const Doctor = sequelize.define('Doctor', {
-  name: {
+  customer: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  address1: {
+  practiceName: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
-  address2: {
+  physicalAddress: {
     type: DataTypes.STRING,
     allowNull: true
   },
@@ -26,7 +26,59 @@ const Doctor = sequelize.define('Doctor', {
     type: DataTypes.STRING,
     allowNull: true
   },
-  phoneNumber: {
+  schedulingContact1: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  schedulingPhone1: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  schedulingEmail1: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  schedulingContact2: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  schedulingPhone2: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  schedulingEmail2: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  billTo: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  billingAddress: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  billingCity: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  billingState: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  billingZip: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  billingContact: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  mainPhone: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  fax: {
     type: DataTypes.STRING,
     allowNull: true
   },

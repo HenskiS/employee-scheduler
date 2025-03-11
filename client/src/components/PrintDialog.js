@@ -268,14 +268,14 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset }) => {
                 multiple
                 value={selectedDoctors}
                 onChange={(e) => setSelectedDoctors(e.target.value)}
-                renderValue={(selected) => selected.map(doc => doc.name).join(', ')}
+                renderValue={(selected) => selected.map(doc => doc.customer).join(', ')}
                 label="Doctors"
                 MenuProps={MenuProps}
               >
                 {doctors.map((doctor) => (
-                  <MenuItem key={doctor.name} value={doctor}>
-                    <Checkbox checked={selectedDoctors.some(doc => doc.name === doctor.name)} />
-                    <ListItemText primary={doctor.name} />
+                  <MenuItem key={doctor.customer} value={doctor}>
+                    <Checkbox checked={selectedDoctors.some(doc => doc.customer === doctor.customer)} />
+                    <ListItemText primary={doctor.customer} />
                   </MenuItem>
                 ))}
               </Select>
