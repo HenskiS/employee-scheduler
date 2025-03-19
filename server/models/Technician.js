@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+
 const Technician = sequelize.define('Technician', {
   name: {
     type: DataTypes.STRING,
@@ -37,6 +38,11 @@ const Technician = sequelize.define('Technician', {
   zip: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
   }
 });
 
