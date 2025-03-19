@@ -5,8 +5,13 @@ const authMiddleware = require('../middleware/auth');
 const { hashPassword, comparePassword } = require('../utils/passwordUtils');
 const jwt = require('jsonwebtoken');
 
-// Register a new user
-router.post('/', async (req, res) => {
+// Register a new user (protected)
+router.post('/', authMiddleware, async (req, res) => {
+  // Check if user is admin
+  if (!req.user.isAdmin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
   const transaction = await User.sequelize.transaction();
   try {
     const { name, email, username, password } = req.body;
