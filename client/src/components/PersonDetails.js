@@ -48,6 +48,7 @@ const FIELD_CONFIGS = {
     { key: 'state', label: 'State' },
     { key: 'zip', label: 'Zip' },
     { key: 'experienceLevel', label: 'Expertise Level' },
+    { key: 'isActive', label: 'Active', type: 'checkbox' },
     { key: 'notes', label: 'Notes', multiline: true, rows: 4 }
   ],
   2: [ // Users
