@@ -13,6 +13,10 @@ client/build/*
 server/database.sqlite
 
 *.sqlite
+
+client/oldBuild/
+config/Client List with Schedulers 03112025.xlsx
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
