@@ -14,6 +14,7 @@ require('./models');
 
 const app = express();
 
+app.set('trust proxy', true); // gets correct IP from nginx proxy
 app.use(cors());
 app.use(express.json());
 app.use(loggingMiddleware);
