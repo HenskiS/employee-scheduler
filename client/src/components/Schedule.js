@@ -145,14 +145,14 @@ function Schedule() {
                 People
               </Button>
             </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            {/* <Box sx={{ display: 'flex', gap: 2 }}> */}
               <Button startIcon={<PrintIcon />} onClick={handleOpenPrintDialog}>
                 Print
               </Button>
               <Button startIcon={<EmailIcon />} onClick={handleOpenEmailDialog}>
                 Email Schedules
               </Button>
-            </Box>
+            {/* </Box> */}
             <Button startIcon={<SettingsIcon />}>Settings</Button>
           </Box>
           <Box mt={2}>
