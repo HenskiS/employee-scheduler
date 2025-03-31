@@ -49,12 +49,26 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
 
   useEffect(() => {
     if (event) {
-      setFormData({
-        ...event,
-        startTime: moment(event.startTime),
-        endTime: moment(event.endTime),
-        label: event.label ?? 'None'
-      });
+      // Handle loading existing event
+      if (event.forAll) {
+        // If the event is for all technicians, set a special "All Technicians" option
+        setFormData({
+          ...event,
+          startTime: moment(event.startTime),
+          endTime: moment(event.endTime),
+          label: event.label ?? 'None',
+          Technicians: [{ id: 'all', name: 'All Technicians', isAllOption: true }]
+        });
+      } else {
+        // Regular event with specific technicians
+        setFormData({
+          ...event,
+          startTime: moment(event.startTime),
+          endTime: moment(event.endTime),
+          label: event.label ?? 'None'
+        });
+      }
+      
       // Clear errors when editing existing event
       setErrors({
         name: '',
@@ -143,15 +157,24 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
   const handleSubmit = () => {
     if (!validateForm()) return;
     
+    // Check if "All Technicians" is selected
+    const isForAll = formData.Technicians?.some(tech => tech.id === 'all');
+    
+    // Prepare the data to be saved
+    const eventData = {
+      ...formData,
+      startTime: formData.startTime.toISOString(),
+      endTime: formData.endTime.toISOString(),
+      forAll: isForAll,
+      // If "All Technicians" is selected, save an empty array for individual technicians
+      Technicians: isForAll ? [] : formData.Technicians
+    };
+    
     if (event?.isRecurring) {
       setRecurringAction('edit');
       setShowRecurringChoice(true);
     } else {
-      onSave({
-        ...formData,
-        startTime: formData.startTime.toISOString(),
-        endTime: formData.endTime.toISOString(),
-      });
+      onSave(eventData);
       onClose();
     }
   };
@@ -165,16 +188,26 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
       onClose();
     }
   };
+  
   const handleRecurringChoice = (choice) => {
     setShowRecurringChoice(false);
     if (!choice) return;
 
+    // Check if "All Technicians" is selected
+    const isForAll = formData.Technicians?.some(tech => tech.id === 'all');
+    
+    // Prepare the data to be saved for recurring events
+    const eventData = {
+      ...formData,
+      startTime: formData.startTime.toISOString(),
+      endTime: formData.endTime.toISOString(),
+      forAll: isForAll,
+      // If "All Technicians" is selected, save an empty array for individual technicians
+      Technicians: isForAll ? [] : formData.Technicians
+    };
+
     if (recurringAction === 'edit') {
-      onSave({
-        ...formData,
-        startTime: formData.startTime.toISOString(),
-        endTime: formData.endTime.toISOString(),
-      }, choice);
+      onSave(eventData, choice);
     } else if (recurringAction === 'delete') {
       onDelete(choice);
     }

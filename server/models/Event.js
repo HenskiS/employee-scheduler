@@ -46,8 +46,12 @@ const Event = sequelize.define('Event', {
   createdBy: {
     type: DataTypes.INTEGER,
     allowNull: true
+  },
+  forAll: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
   }
 }, {paranoid: true, timestamps: true});
-
 
 module.exports = Event;

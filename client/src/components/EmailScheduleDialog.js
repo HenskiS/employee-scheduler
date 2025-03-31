@@ -161,9 +161,9 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
       <LocalizationProvider dateAdapter={AdapterMoment}>
         <DialogTitle>Email Technician Schedules</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, my: 1 }}>
             {/* Date Range Selectors */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex' , gap: 1 }}>
               <DatePicker
                 label="Start Date"
                 value={startDate}
@@ -305,7 +305,7 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
                 rows={3}
               />
               
-              <Box sx={{ mt: 2 }}>
+              <Box /* sx={{ mt: 2 }} */>
                 <FormControlLabel
                   control={
                     <Checkbox

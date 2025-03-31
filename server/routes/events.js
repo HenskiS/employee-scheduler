@@ -43,7 +43,8 @@ const createRecurringEvents = async (originalEvent, rule, transaction) => {
       originalEventId: originalEvent.originalEventId || originalEvent.id,
       DoctorId: originalEvent.DoctorId,
       recurrencePattern: rule,
-      createdBy: originalEvent.createdBy
+      createdBy: originalEvent.createdBy,
+      forAll: originalEvent.forAll
     }, { transaction });
   });
 
@@ -227,6 +228,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         error: 'Invalid updateType. Must be either "single" or "future"' 
       });
     }
+
     let event = await Event.findByPk(req.params.id, {
       include: [
         { model: Technician },
@@ -237,105 +239,124 @@ router.put('/:id', authMiddleware, async (req, res) => {
       await t.rollback();
       return res.status(404).json({ error: 'Event not found' });
     }
-    // Handle different update types
-    if (updateType === 'single') {
-      // Update only this event
+
+    const isAddingRecurrence = 
+      !event.isRecurring && 
+      req.body.isRecurring && 
+      req.body.recurrencePattern;
+
+    // If adding recurrence, create future events regardless of updateType
+    if (isAddingRecurrence) {
+      // Update the current event first
       await event.update(req.body, { transaction: t });
       
       if (req.body.Technicians) {
         await event.setTechnicians(req.body.Technicians.map(tech => tech.id), { transaction: t });
       }
-    } else if (updateType === 'future') {
-      // Get recurrences
-      let recurrences = [];
-      const searchId = event.originalEventId || event.id;
-      if (searchId) {
-        const whereClause = {
-          [Op.or]: [
-            { id: searchId }, // Include the original event
-            { originalEventId: searchId } // Include all recurrences
-          ],
-          // For 'future' updates, only get events after this one's start time
-          startTime: { [Op.gte]: event.startTime }
-        };
-        recurrences = await Event.findAll({
-          where: whereClause,
-          include: [
-            { model: Technician },
-            { model: Doctor }
-          ]
-        });
-      }
-      // Attach the recurrences to the event
-      event.recurrences = recurrences.filter(rec => rec.id !== event.id);
-
-      // If recurrence pattern is changing, we need to recreate the recurring events
-      if (req.body.recurrencePattern && req.body.recurrencePattern !== event.recurrencePattern) {
-        // Validate updateType
-        if (updateType === 'all') {
-          await t.rollback();
-          return res.status(400).json({ 
-            error: 'Cannot modify past events. Use "future" to modify upcoming events or "single" for individual events.' 
+      
+      // Create recurring events
+      await createRecurringEvents(event, req.body.recurrencePattern, t);
+    } else {
+      // Handle different update types
+      if (updateType === 'single') {
+        // Update only this event
+        await event.update(req.body, { transaction: t });
+        
+        if (req.body.Technicians) {
+          await event.setTechnicians(req.body.Technicians.map(tech => tech.id), { transaction: t });
+        }
+      } else if (updateType === 'future') {
+        // Get recurrences
+        let recurrences = [];
+        const searchId = event.originalEventId || event.id;
+        if (searchId) {
+          const whereClause = {
+            [Op.or]: [
+              { id: searchId }, // Include the original event
+              { originalEventId: searchId } // Include all recurrences
+            ],
+            // For 'future' updates, only get events after this one's start time
+            startTime: { [Op.gte]: event.startTime }
+          };
+          recurrences = await Event.findAll({
+            where: whereClause,
+            include: [
+              { model: Technician },
+              { model: Doctor }
+            ]
           });
         }
+        // Attach the recurrences to the event
+        event.recurrences = recurrences.filter(rec => rec.id !== event.id);
 
-        // Delete this event and relevant recurrences
-        await event.destroy({ transaction: t });
-        if (event.recurrences) {
-          await Promise.all(event.recurrences
-            .filter(recurringEvent => 
-              updateType === 'future' && recurringEvent.startTime >= event.startTime
-            )
-            .map(recurringEvent => 
-              recurringEvent.destroy({ transaction: t })
-            )
-          );
-        }
+        // If recurrence pattern is changing, we need to recreate the recurring events
+        if (req.body.recurrencePattern && req.body.recurrencePattern !== event.recurrencePattern) {
+          // Validate updateType
+          if (updateType === 'all') {
+            await t.rollback();
+            return res.status(400).json({ 
+              error: 'Cannot modify past events. Use "future" to modify upcoming events or "single" for individual events.' 
+            });
+          }
 
-        // Create new event with updated pattern
-        const { id, ...eventDataWithoutId } = req.body;
-        const newEvent = await Event.create({
-          ...eventDataWithoutId,
-          // For future updates, maintain link to original event
-          // originalEventId: originalId
-        }, { transaction: t });
+          // Delete this event and relevant recurrences
+          await event.destroy({ transaction: t });
+          if (event.recurrences) {
+            await Promise.all(event.recurrences
+              .filter(recurringEvent => 
+                updateType === 'future' && recurringEvent.startTime >= event.startTime
+              )
+              .map(recurringEvent => 
+                recurringEvent.destroy({ transaction: t })
+              )
+            );
+          }
 
-        // Set technicians for the new event
-        if (req.body.Technicians) {
-          await newEvent.setTechnicians(
-            req.body.Technicians.map(tech => tech.id),
-            { transaction: t }
-          );
-        }
+          // Create new event with updated pattern
+          const { id, ...eventDataWithoutId } = req.body;
+          const newEvent = await Event.create({
+            ...eventDataWithoutId,
+            // For future updates, maintain link to original event
+            originalEventId: event.originalEventId || event.id
+          }, { transaction: t });
 
-        // Create new recurrences with updated pattern
-        await createRecurringEvents(newEvent, req.body.recurrencePattern, t);
+          // Set technicians for the new event
+          if (req.body.Technicians) {
+            await newEvent.setTechnicians(
+              req.body.Technicians.map(tech => tech.id),
+              { transaction: t }
+            );
+          }
 
-        // Update our reference to return the new event
-        event = newEvent;
-      } else {
-        // No pattern change, just regular updates
-        // Update this event
-        await event.update(req.body, { transaction: t });
-        if (req.body.Technicians) {
-          await event.setTechnicians(
-            req.body.Technicians.map(tech => tech.id),
-            { transaction: t }
-          );
-        }
-        // Update recurrences
-        if (event.recurrences && event.recurrences.length > 0) {
-          await Promise.all(event.recurrences.map(async (recurrence) => {
-            const updateData = prepareUpdateData(recurrence, req.body);
-            await recurrence.update(updateData, { transaction: t });
-            
-            if (req.body.Technicians) {
-              await recurrence.setTechnicians(
-                req.body.Technicians.map(tech => tech.id),
-                { transaction: t }
-              );
-            }
-          }));
+          // Create new recurrences with updated pattern
+          await createRecurringEvents(newEvent, req.body.recurrencePattern, t);
+
+          // Update our reference to return the new event
+          event = newEvent;
+        } else {
+          // No pattern change, just regular updates
+          // Update this event
+          await event.update(req.body, { transaction: t });
+          if (req.body.Technicians) {
+            await event.setTechnicians(
+              req.body.Technicians.map(tech => tech.id),
+              { transaction: t }
+            );
+          }
+          // Update recurrences
+          if (event.recurrences && event.recurrences.length > 0) {
+            await Promise.all(event.recurrences.map(async (recurrence) => {
+              const updateData = prepareUpdateData(recurrence, req.body);
+              await recurrence.update(updateData, { transaction: t });
+              
+              if (req.body.Technicians) {
+                await recurrence.setTechnicians(
+                  req.body.Technicians.map(tech => tech.id),
+                  { transaction: t }
+                );
+              }
+            }));
+          }
         }
       }
     }
