@@ -208,7 +208,7 @@ const updateEventTimes = (originalEvent, newStartTime, newEndTime) => {
 
 // Helper function to prepare update data
 const prepareUpdateData = (originalEvent, requestBody) => {
-  const { startTime, endTime, ...updateData } = requestBody;
+  const { startTime, endTime, originalEventId, ...updateData } = requestBody;
   const timeUpdates = updateEventTimes(originalEvent, startTime, endTime);
   
   return {
@@ -268,12 +268,12 @@ router.put('/:id', authMiddleware, async (req, res) => {
       } else if (updateType === 'future') {
         // Get recurrences
         let recurrences = [];
-        const searchId = event.originalEventId || event.id;
-        if (searchId) {
+        const originalEventReference = event.originalEventId || event.id;
+        if (originalEventReference) {
           const whereClause = {
             [Op.or]: [
-              { id: searchId }, // Include the original event
-              { originalEventId: searchId } // Include all recurrences
+              { id: originalEventReference }, // Include the original event
+              { originalEventId: originalEventReference } // Include all recurrences
             ],
             // For 'future' updates, only get events after this one's start time
             startTime: { [Op.gte]: event.startTime }
@@ -304,7 +304,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
           if (event.recurrences) {
             await Promise.all(event.recurrences
               .filter(recurringEvent => 
-                updateType === 'future' && recurringEvent.startTime >= event.startTime
+                recurringEvent.startTime >= event.startTime
               )
               .map(recurringEvent => 
                 recurringEvent.destroy({ transaction: t })
@@ -317,7 +317,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
           const newEvent = await Event.create({
             ...eventDataWithoutId,
             // For future updates, maintain link to original event
-            originalEventId: event.originalEventId || event.id
+            originalEventId: originalEventReference
           }, { transaction: t });
 
           // Set technicians for the new event
