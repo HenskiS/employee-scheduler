@@ -27,7 +27,7 @@ function Schedule() {
 
   // Filter events when either events or filterParams change
   useEffect(() => {
-    if (filterParams && events.length) {
+    if (filterParams) {
       const filtered = events.filter(event => {
         // Start with date range filtering (always applied)
         const startDate = new Date(filterParams.startDate);

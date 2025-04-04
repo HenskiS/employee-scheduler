@@ -62,7 +62,7 @@ const Calendar = ({
     if (selectedEvent?.id) {
       try {
         await axios.delete(`/events/${selectedEvent.id}?deleteType=${deleteType}`);
-        refreshData();
+        await refreshData();
         handleCloseDialog();
       } catch (error) {
         console.error('Error deleting event:', error);
