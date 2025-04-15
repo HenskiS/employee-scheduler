@@ -12,6 +12,7 @@ import PrintDialog from './PrintDialog';
 import EmailScheduleDialog from './EmailScheduleDialog';
 import PrintHandler from './PrintHandler';
 import { useScheduling } from './SchedulingContext';
+import axios from '../api/axios'
 
 function Schedule() {
   const [tabValue, setTabValue] = useState(0);
@@ -113,18 +114,17 @@ function Schedule() {
 
   const handleSendEmail = (params) => {
     console.log('Sending email with parameters:', params);
-    
-    setFilterParams({
-      ...params,
-      source: 'email'
-    });
-    
-    // Implement POST request to server
-    // Show success/error message, maybe email the error to the user?
-    
-    // For now, just log and close the dialog
     setIsEmailDialogOpen(false);
-  };
+
+    axios.post('/schedules/send-emails', params)
+      .then(response => {
+        console.log('Email sent successfully:', response.data);
+      })
+      .catch(error => {
+        console.error('Error sending email:', error);
+        // Add error handling here, like showing an error message
+      });
+  };  
 
   return (
     <>

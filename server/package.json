@@ -21,6 +21,7 @@
     "minimist": "^1.2.8",
     "moment-timezone": "^0.5.46",
     "nodemailer": "^6.10.0",
+    "puppeteer": "^24.6.1",
     "rrule": "^2.8.1",
     "sequelize": "^6.37.3",
     "sqlite3": "^5.1.7"
