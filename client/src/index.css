@@ -410,6 +410,9 @@ td:hover {
   /* color: #666; */
   white-space: pre-wrap;
 }
+@media print {
+  .no-print { display: none !important; }
+}
 /* @media print {
   .calendar-container {
     border: none;

@@ -7,6 +7,7 @@ const { router: doctorRoutes} = require('./routes/doctors');
 const { router: technicianRoutes} = require('./routes/technicians');
 const { router: userRoutes} = require('./routes/users');
 const { router: eventRoutes} = require('./routes/events');
+const { router: scheduleRoutes} = require('./routes/schedules');
 const refreshRoutes = require('./routes/refresh')
 const loggingMiddleware = require('./middleware/logging')
 
@@ -30,6 +31,7 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
