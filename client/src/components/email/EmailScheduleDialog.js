@@ -5,25 +5,18 @@ import {
   DialogContent, 
   DialogActions, 
   Button, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  Checkbox, 
-  ListItemText, 
   Box, 
   Alert,
-  TextField,
   Typography,
-  RadioGroup,
-  Radio,
-  FormControlLabel,
-  ListSubheader,
   CircularProgress
 } from '@mui/material';
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { useScheduling } from '../SchedulingContext';
+import EmailDateRangePicker from './EmailDateRangePicker';
+import TechnicianSelector from './TechnicianSelector';
+import EmailOptionsForm from './EmailOptionsForm';
+import { validateEmails } from './ValidationUtils';
 
 const EmailScheduleDialog = ({ open, onClose, onSend }) => {
   const { technicians } = useScheduling();
@@ -69,9 +62,7 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
     }
   }, [open, technicians, startDate, endDate]);
 
-  // Only update selection when option changes by user
-  const handleTechnicianOptionChange = (e) => {
-    const newOption = e.target.value;
+  const handleTechnicianOptionChange = (newOption) => {
     setTechnicianOption(newOption);
     
     // Update the selection based on the new option
@@ -84,26 +75,6 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
       // If switching to 'selected' but no techs are selected, don't change the selection
       setSelectedTechnicians([]);
     }
-  };
-
-  const handleTechnicianSelectionChange = (e) => {
-    const newSelection = e.target.value;
-    setSelectedTechnicians(newSelection);
-    // Radio buttons only change when explicitly clicked by the user
-  };
-
-  // Validate email addresses in selected technicians
-  const validateEmails = (techs) => {
-    const errors = [];
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    techs.forEach(tech => {
-      if (!tech.email || !emailRegex.test(tech.email)) {
-        errors.push(`${tech.name || 'Technician ' + tech.id}: Invalid or missing email (${tech.email || 'none'})`);
-      }
-    });
-    
-    return errors;
   };
 
   const handleSend = () => {
@@ -170,71 +141,20 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
     onSend(emailParams);
   };
 
-  const MenuProps = {
-    PaperProps: {
-      style: {
-        maxHeight: 48 * 4.5 + 8,
-        width: 250,
-      },
-    },
-    // Force menu to always open at the top of the list
-    anchorOrigin: {
-      vertical: 'bottom',
-      horizontal: 'left',
-    },
-    transformOrigin: {
-      vertical: 'top',
-      horizontal: 'left',
-    },
-    // Ensure first item is visible/scrolled to
-    disableAutoFocusItem: true,
-  };
-
-  // Sort technicians: active first, then inactive
-  const sortedTechnicians = [...technicians].sort((a, b) => {
-    // First sort by active status (active first)
-    if (a.isActive && !b.isActive) return -1;
-    if (!a.isActive && b.isActive) return 1;
-    
-    // If same active status, sort alphabetically by name
-    return a.name.localeCompare(b.name);
-  });
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <LocalizationProvider dateAdapter={AdapterMoment}>
         <DialogTitle>Email Technician Schedules</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, my: 1 }}>
-            {/* Date Range Selectors */}
-            <Box sx={{ display: 'flex' , gap: 1 }}>
-              <DatePicker
-                label="Start Date"
-                value={startDate}
-                onChange={(date) => {
-                  setStartDate(date);
-                  setDateError(false);
-                }}
-                slotProps={{ 
-                  textField: { 
-                    fullWidth: true,
-                  } 
-                }}
-              />
-              <DatePicker
-                label="End Date"
-                value={endDate}
-                onChange={(date) => {
-                  setEndDate(date);
-                  setDateError(false);
-                }}
-                slotProps={{ 
-                  textField: { 
-                    fullWidth: true,
-                  } 
-                }}
-              />
-            </Box>
+            {/* Date Range Picker Component */}
+            <EmailDateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              setStartDate={setStartDate}
+              setEndDate={setEndDate}
+              setDateError={setDateError}
+            />
 
             {dateError && (
               <Alert severity="error" onClose={() => setDateError(false)}>
@@ -254,129 +174,24 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
               </Alert>
             )}
 
-            {/* Technician Options */}
-            <Box sx={{ mt: 1 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>Technicians</Typography>
-              
-              <RadioGroup
-                value={technicianOption}
-                onChange={handleTechnicianOptionChange}
-              >
-                <FormControlLabel 
-                  value="allActive" 
-                  control={<Radio />} 
-                  label="All Active Technicians" 
-                />
-                <FormControlLabel 
-                  value="all" 
-                  control={<Radio />} 
-                  label="All Technicians" 
-                />
-                <FormControlLabel 
-                  value="selected" 
-                  control={<Radio />} 
-                  label="Selected Technicians" 
-                />
-              </RadioGroup>
-              
-              {technicianOption === 'selected' && (
-                <>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Select individual technicians below:
-                    </Typography>
-                    <Button 
-                      size="small" 
-                      onClick={() => {
-                        setSelectedTechnicians([]);
-                      }}
-                      variant="outlined"
-                    >
-                      Clear Selection
-                    </Button>
-                  </Box>
-                  <FormControl fullWidth variant="outlined">
-                    <InputLabel>Select Technicians</InputLabel>
-                    <Select
-                      multiple
-                      value={selectedTechnicians}
-                      onChange={handleTechnicianSelectionChange}
-                      renderValue={(selected) => selected.map(tech => tech.name).join(', ')}
-                      label="Select Technicians"
-                      MenuProps={MenuProps}
-                    >
-                      {/* Active Technicians */}
-                      <ListSubheader>Active Technicians</ListSubheader>
-                      {sortedTechnicians.filter(tech => tech.isActive).map((technician) => (
-                        <MenuItem key={technician.name} value={technician}>
-                          <Checkbox checked={selectedTechnicians.some(tech => tech.name === technician.name)} />
-                          <ListItemText 
-                            primary={technician.name} 
-                            secondary={technician.email || 'No email'} 
-                          />
-                        </MenuItem>
-                      ))}
-                      
-                      {/* Divider between active and inactive */}
-                      {sortedTechnicians.some(tech => !tech.isActive) && (
-                        <ListSubheader>Inactive Technicians</ListSubheader>
-                      )}
-                      
-                      {/* Inactive Technicians */}
-                      {sortedTechnicians.filter(tech => !tech.isActive).map((technician) => (
-                        <MenuItem key={technician.name} value={technician} sx={{ opacity: 0.7 }}>
-                          <Checkbox checked={selectedTechnicians.some(tech => tech.name === technician.name)} />
-                          <ListItemText 
-                            primary={technician.name} 
-                            primaryTypographyProps={{ 
-                              sx: { fontStyle: 'italic' } 
-                            }}
-                            secondary={technician.email || 'No email'}
-                          />
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </>
-              )}
-            </Box>
+            {/* Technician Selector Component */}
+            <TechnicianSelector
+              technicians={technicians}
+              selectedTechnicians={selectedTechnicians}
+              setSelectedTechnicians={setSelectedTechnicians}
+              technicianOption={technicianOption}
+              onTechnicianOptionChange={handleTechnicianOptionChange}
+            />
 
-            {/* Email Options */}
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>Email Options</Typography>
-              
-              <TextField
-                fullWidth
-                label="Email Subject"
-                value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
-                margin="normal"
-                variant="outlined"
-              />
-              
-              <TextField
-                fullWidth
-                label="Email Message"
-                value={emailMessage}
-                onChange={(e) => setEmailMessage(e.target.value)}
-                margin="normal"
-                variant="outlined"
-                multiline
-                rows={3}
-              />
-              
-              <Box>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={includeAllEvents}
-                      onChange={() => setIncludeAllEvents(!includeAllEvents)}
-                    />
-                  }
-                  label="Include events for All"
-                />
-              </Box>
-            </Box>
+            {/* Email Options Form Component */}
+            <EmailOptionsForm
+              emailSubject={emailSubject}
+              setEmailSubject={setEmailSubject}
+              emailMessage={emailMessage}
+              setEmailMessage={setEmailMessage}
+              includeAllEvents={includeAllEvents}
+              setIncludeAllEvents={setIncludeAllEvents}
+            />
           </Box>
         </DialogContent>
         <DialogActions>
