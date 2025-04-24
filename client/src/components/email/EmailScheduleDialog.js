@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
-import { useScheduling } from './SchedulingContext';
+import { useScheduling } from '../SchedulingContext';
 
 const EmailScheduleDialog = ({ open, onClose, onSend }) => {
   const { technicians } = useScheduling();

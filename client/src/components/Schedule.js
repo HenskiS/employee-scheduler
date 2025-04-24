@@ -9,8 +9,8 @@ import {
 import Calendar from './Calendar';
 import PeopleDialog from './PeopleDialog';
 import PrintDialog from './PrintDialog';
-import EmailScheduleDialog from './EmailScheduleDialog';
-import EmailStatusDialog from './EmailStatusDialog';
+import EmailScheduleDialog from './email/EmailScheduleDialog';
+import EmailStatusDialog from './email/EmailStatusDialog';
 import PrintHandler from './PrintHandler';
 import { useScheduling } from './SchedulingContext';
 import axios from '../api/axios'

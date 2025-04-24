@@ -27,7 +27,7 @@ import {
   HourglassEmpty as PendingIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import axios from '../api/axios';
+import axios from '../../api/axios';
 
 const EmailStatusDialog = ({ open, onClose, statusId }) => {
   const [status, setStatus] = useState(null);
