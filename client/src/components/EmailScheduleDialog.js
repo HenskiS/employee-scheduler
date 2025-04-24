@@ -18,7 +18,8 @@ import {
   RadioGroup,
   Radio,
   FormControlLabel,
-  ListSubheader
+  ListSubheader,
+  CircularProgress
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -35,6 +36,8 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
   const [emailMessage, setEmailMessage] = useState('Attached is your schedule for the upcoming period.');
   const [includeAllEvents, setIncludeAllEvents] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
 
   // One-time initialization when dialog opens
   useEffect(() => {
@@ -44,6 +47,8 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
       setEmailMessage('Attached is your schedule for the upcoming period.');
       setIncludeAllEvents(true);
       setDateError(false);
+      setValidationErrors([]);
+      setSending(false);
       
       // Only reset dates if they aren't already set
       if (!startDate && !endDate) {
@@ -60,6 +65,7 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
     } else if (!open) {
       // Reset when dialog closes
       setIsInitialized(false);
+      setSending(false);
     }
   }, [open, technicians, startDate, endDate]);
 
@@ -86,32 +92,70 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
     // Radio buttons only change when explicitly clicked by the user
   };
 
+  // Validate email addresses in selected technicians
+  const validateEmails = (techs) => {
+    const errors = [];
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    techs.forEach(tech => {
+      if (!tech.email || !emailRegex.test(tech.email)) {
+        errors.push(`${tech.name || 'Technician ' + tech.id}: Invalid or missing email (${tech.email || 'none'})`);
+      }
+    });
+    
+    return errors;
+  };
+
   const handleSend = () => {
+    // Clear previous errors
+    setDateError(false);
+    setValidationErrors([]);
+    
+    // Collect all validation errors
+    let hasErrors = false;
+    const errors = [];
+    
     // Check if both dates are selected
     if (!startDate || !endDate) {
       setDateError('Please select both start and end dates');
-      return;
-    }
-
-    // Check if dates are valid
-    if (!startDate.isValid() || !endDate.isValid()) {
-      setDateError('Invalid date format');
-      return;
-    }
-
-    // Check date order
-    if (startDate.isAfter(endDate)) {
-      setDateError('Start date must be before end date');
-      return;
+      hasErrors = true;
+    } else {
+      // Check if dates are valid
+      if (!startDate.isValid() || !endDate.isValid()) {
+        setDateError('Invalid date format');
+        hasErrors = true;
+      } else if (startDate.isAfter(endDate)) {
+        // Check date order
+        setDateError('Start date must be before end date');
+        hasErrors = true;
+      }
     }
 
     // Check if at least one technician is selected
     if (selectedTechnicians.length === 0) {
-      setDateError('Please select at least one technician');
+      errors.push('Please select at least one technician');
+      hasErrors = true;
+    } else {
+      // Validate email addresses
+      const emailErrors = validateEmails(selectedTechnicians);
+      if (emailErrors.length > 0) {
+        errors.push(...emailErrors);
+        hasErrors = true;
+      }
+    }
+    
+    // Update validation errors
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+    }
+    
+    if (hasErrors) {
       return;
     }
     
-    setDateError(false);
+    // Set sending state to true to show loading indicator
+    setSending(true);
+    
     const emailParams = {
       startDate: startDate.format('YYYY-MM-DD'),
       endDate: endDate.format('YYYY-MM-DD'),
@@ -197,6 +241,18 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
                 {dateError}
               </Alert>
             )}
+            
+            {/* Validation Errors */}
+            {validationErrors.length > 0 && (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                <Typography variant="subtitle2">Please fix the following issues:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {validationErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
 
             {/* Technician Options */}
             <Box sx={{ mt: 1 }}>
@@ -254,7 +310,10 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
                       {sortedTechnicians.filter(tech => tech.isActive).map((technician) => (
                         <MenuItem key={technician.name} value={technician}>
                           <Checkbox checked={selectedTechnicians.some(tech => tech.name === technician.name)} />
-                          <ListItemText primary={technician.name} />
+                          <ListItemText 
+                            primary={technician.name} 
+                            secondary={technician.email || 'No email'} 
+                          />
                         </MenuItem>
                       ))}
                       
@@ -272,6 +331,7 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
                             primaryTypographyProps={{ 
                               sx: { fontStyle: 'italic' } 
                             }}
+                            secondary={technician.email || 'No email'}
                           />
                         </MenuItem>
                       ))}
@@ -305,7 +365,7 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
                 rows={3}
               />
               
-              <Box /* sx={{ mt: 2 }} */>
+              <Box>
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -320,9 +380,15 @@ const EmailScheduleDialog = ({ open, onClose, onSend }) => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSend} variant="contained" color="primary">
-            Send
+          <Button onClick={onClose} disabled={sending}>Cancel</Button>
+          <Button 
+            onClick={handleSend} 
+            variant="contained" 
+            color="primary"
+            disabled={sending}
+            startIcon={sending && <CircularProgress size={18} color="inherit" />}
+          >
+            {sending ? 'Sending...' : 'Send'}
           </Button>
         </DialogActions>
       </LocalizationProvider>

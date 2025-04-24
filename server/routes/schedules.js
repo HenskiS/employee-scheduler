@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 const { Event, Technician, Doctor } = require('../models/index');
 const authMiddleware = require('../middleware/auth');
 const { generatePDF } = require('../utils/generatePDF');
-const { sendSchedulePdf } = require('../utils/emailHandler');
+const { sendSchedulePdf, validateEmail } = require('../utils/emailHandler');
 
 // Get events for a specific technician within a date range
 const getTechnicianEvents = async (technicianId, start, end, includeForAll = false) => {
@@ -82,11 +82,46 @@ router.post('/send-emails', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'At least one technician must be selected' });
     }
 
+    // Set up arrays to track status
     const results = [];
     const errors = [];
+    
+    // Send initial response to allow tracking progress
+    const responseId = Date.now().toString();
+    res.status(202).json({
+      id: responseId,
+      message: 'Email sending process started',
+      totalTechnicians: technicians.length,
+      status: 'processing'
+    });
+
+    // Create a record in the global map to track this batch of emails
+    global.emailStatus = global.emailStatus || new Map();
+    global.emailStatus.set(responseId, {
+      totalTechnicians: technicians.length,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      inProgress: technicians.length,
+      technicianStatus: technicians.map(tech => {
+        const techId = typeof tech === 'object' ? tech.id : tech;
+        return {
+          technicianId: techId,
+          status: 'pending',
+          details: null
+        };
+      }),
+      startTime: new Date(),
+      lastUpdated: new Date()
+    });
 
     // Process each technician
     for (const tech of technicians) {
+      const techId = typeof tech === 'object' ? tech.id : tech;
+      
+      // Update technician status to "processing"
+      updateTechnicianStatus(responseId, techId, 'processing');
+      
       try {
         // Get technician details from database if we only have the ID
         let technicianName, technicianEmail;
@@ -108,8 +143,13 @@ router.post('/send-emails', authMiddleware, async (req, res) => {
           throw new Error(`No email found for technician ${technicianName}`);
         }
 
+        // Validate email before proceeding
+        if (!validateEmail(technicianEmail)) {
+          throw new Error(`Invalid email address for technician ${technicianName}: ${technicianEmail}`);
+        }
+
         // Generate the print URL
-        const printUrl = `http://localhost:${process.env.PORT}/print?technicianId=${typeof tech === 'object' ? tech.id : tech}&start=${startDate}&end=${endDate}&all=${includeAllEvents}`;
+        const printUrl = `http://localhost:${process.env.PORT}/print?technicianId=${techId}&start=${startDate}&end=${endDate}&all=${includeAllEvents}`;
         
         // Generate PDF
         const pdfBuffer = await generatePDF(printUrl);
@@ -123,35 +163,100 @@ router.post('/send-emails', authMiddleware, async (req, res) => {
           emailMessage || null
         );
         
-        results.push({
-          technicianId: typeof tech === 'object' ? tech.id : tech,
+        const resultInfo = {
+          technicianId: techId,
           technicianName,
           emailSent: emailResult.success,
           messageId: emailResult.messageId
-        });
+        };
+        
+        results.push(resultInfo);
+        
+        // Update technician status to "completed" or "failed"
+        updateTechnicianStatus(
+          responseId, 
+          techId, 
+          emailResult.success ? 'completed' : 'failed',
+          emailResult.success ? resultInfo : { error: emailResult.error }
+        );
         
       } catch (error) {
-        console.error(`Error processing technician ${typeof tech === 'object' ? tech.id : tech}:`, error);
-        errors.push({
-          technicianId: typeof tech === 'object' ? tech.id : tech,
+        console.error(`Error processing technician ${techId}:`, error);
+        const errorInfo = {
+          technicianId: techId,
           error: error.message
-        });
+        };
+        errors.push(errorInfo);
+        
+        // Update technician status to "failed"
+        updateTechnicianStatus(responseId, techId, 'failed', errorInfo);
       }
     }
     
-    // Return results
-    res.json({
-      success: errors.length === 0,
-      results,
-      errors,
-      totalProcessed: technicians.length,
-      successful: results.length,
-      failed: errors.length
-    });
+    // Update final status
+    const finalStatus = global.emailStatus.get(responseId);
+    finalStatus.completed = true;
+    finalStatus.lastUpdated = new Date();
+    global.emailStatus.set(responseId, finalStatus);
     
+    // We've already sent the initial response, so we don't return anything here
   } catch (error) {
     console.error('Error in send-emails route:', error);
     res.status(500).json({ error: error.message || 'An error occurred while sending schedule emails' });
+  }
+});
+
+// Helper function to update technician status in the emailStatus map
+function updateTechnicianStatus(responseId, technicianId, status, details = null) {
+  const statusRecord = global.emailStatus.get(responseId);
+  if (!statusRecord) return;
+  
+  const techIndex = statusRecord.technicianStatus.findIndex(t => t.technicianId === technicianId);
+  if (techIndex === -1) return;
+  
+  // Update the technician's status
+  statusRecord.technicianStatus[techIndex] = {
+    technicianId,
+    status,
+    details
+  };
+  
+  // Update counters based on status
+  if (status === 'processing') {
+    // No counter changes needed, already set to "inProgress" initially
+  } else if (status === 'completed') {
+    statusRecord.succeeded++;
+    statusRecord.inProgress--;
+    statusRecord.processed++;
+  } else if (status === 'failed') {
+    statusRecord.failed++;
+    statusRecord.inProgress--;
+    statusRecord.processed++;
+  }
+  
+  statusRecord.lastUpdated = new Date();
+  global.emailStatus.set(responseId, statusRecord);
+}
+
+// Route to check email sending status
+router.get('/email-status/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!global.emailStatus || !global.emailStatus.has(id)) {
+      return res.status(404).json({ error: 'Status ID not found' });
+    }
+    
+    const status = global.emailStatus.get(id);
+    res.json(status);
+    
+    // Clean up completed statuses after 1 hour
+    if (status.completed && (new Date() - status.lastUpdated > 60 * 60 * 1000)) {
+      global.emailStatus.delete(id);
+    }
+  } catch (error) {
+    console.error('Error fetching email status:', error);
+    res.status(500).json({ error: error.message || 'An error occurred while checking email status' });
   }
 });
 

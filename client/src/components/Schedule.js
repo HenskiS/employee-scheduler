@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button } from '@mui/material';
+import { Box, Button, Snackbar, Alert } from '@mui/material';
 import { 
   People as UsersIcon,
   Settings as SettingsIcon,
@@ -10,6 +10,7 @@ import Calendar from './Calendar';
 import PeopleDialog from './PeopleDialog';
 import PrintDialog from './PrintDialog';
 import EmailScheduleDialog from './EmailScheduleDialog';
+import EmailStatusDialog from './EmailStatusDialog';
 import PrintHandler from './PrintHandler';
 import { useScheduling } from './SchedulingContext';
 import axios from '../api/axios'
@@ -19,9 +20,14 @@ function Schedule() {
   const [isPeopleDialogOpen, setIsPeopleDialogOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [isEmailStatusDialogOpen, setIsEmailStatusDialogOpen] = useState(false);
   const [shouldResetPrintDialog, setShouldResetPrintDialog] = useState(false);
   const [isPrintCalendarOpen, setIsPrintCalendarOpen] = useState(false);
   const [filterParams, setFilterParams] = useState();
+  const [emailStatusId, setEmailStatusId] = useState(null);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertSeverity, setAlertSeverity] = useState('success');
+  const [showAlert, setShowAlert] = useState(false);
   
   const { events, updateDateRange } = useScheduling();
   const [filteredEvents, setFilteredEvents] = useState([]);
@@ -94,6 +100,11 @@ function Schedule() {
     setIsEmailDialogOpen(false);
   };
 
+  const handleCloseEmailStatusDialog = () => {
+    setIsEmailStatusDialogOpen(false);
+    setEmailStatusId(null);
+  };
+
   const handleClosePrintCalendar = () => {
     setIsPrintCalendarOpen(false);
     setFilterParams(null);
@@ -118,13 +129,35 @@ function Schedule() {
 
     axios.post('/schedules/send-emails', params)
       .then(response => {
-        console.log('Email sent successfully:', response.data);
+        console.log('Email sending process started:', response.data);
+        
+        // Show success alert
+        setAlertMessage('Email sending process started');
+        setAlertSeverity('info');
+        setShowAlert(true);
+        
+        // Open the status dialog with the returned ID
+        if (response.data && response.data.id) {
+          setEmailStatusId(response.data.id);
+          setIsEmailStatusDialogOpen(true);
+        }
       })
       .catch(error => {
         console.error('Error sending email:', error);
-        // Add error handling here, like showing an error message
+        
+        // Show error alert
+        setAlertMessage(error.response?.data?.error || 'Error sending emails');
+        setAlertSeverity('error');
+        setShowAlert(true);
       });
-  };  
+  };
+
+  const handleCloseAlert = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setShowAlert(false);
+  };
 
   return (
     <>
@@ -145,14 +178,12 @@ function Schedule() {
                 People
               </Button>
             </Box>
-            {/* <Box sx={{ display: 'flex', gap: 2 }}> */}
-              <Button startIcon={<PrintIcon />} onClick={handleOpenPrintDialog}>
-                Print
-              </Button>
-              <Button startIcon={<EmailIcon />} onClick={handleOpenEmailDialog}>
-                Email Schedules
-              </Button>
-            {/* </Box> */}
+            <Button startIcon={<PrintIcon />} onClick={handleOpenPrintDialog}>
+              Print
+            </Button>
+            <Button startIcon={<EmailIcon />} onClick={handleOpenEmailDialog}>
+              Email Schedules
+            </Button>
             <Button startIcon={<SettingsIcon />}>Settings</Button>
           </Box>
           <Box mt={2}>
@@ -177,6 +208,26 @@ function Schedule() {
         onClose={handleCloseEmailDialog}
         onSend={handleSendEmail}
       />
+      <EmailStatusDialog
+        open={isEmailStatusDialogOpen}
+        onClose={handleCloseEmailStatusDialog}
+        statusId={emailStatusId}
+      />
+      
+      <Snackbar 
+        open={showAlert} 
+        autoHideDuration={6000} 
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert 
+          onClose={handleCloseAlert} 
+          severity={alertSeverity} 
+          sx={{ width: '100%' }}
+        >
+          {alertMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

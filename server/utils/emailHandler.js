@@ -11,8 +11,32 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+/**
+ * Validates an email address format
+ * @param {string} email - Email address to validate
+ * @returns {boolean} Whether the email address is valid
+ */
+const validateEmail = (email) => {
+    if (!email) return false;
+    
+    // Simple regex for basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+    
+    // For more comprehensive validation, consider using a library like validator.js
+    // or implementing a more robust regex pattern
+};
+
 const sendSchedulePdf = async (recipientEmail, pdfBuffer, employeeName, subject, message) => {
     try {
+        // Validate email first
+        if (!validateEmail(recipientEmail)) {
+            return { 
+                success: false, 
+                error: `Invalid email address: ${recipientEmail}`
+            };
+        }
+
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: recipientEmail,
@@ -43,6 +67,14 @@ const sendSchedulePdf = async (recipientEmail, pdfBuffer, employeeName, subject,
  */
 const sendEmail = async (recipientEmail, subject, message, recipientName = '') => {
     try {
+        // Validate email first
+        if (!validateEmail(recipientEmail)) {
+            return { 
+                success: false, 
+                error: `Invalid email address: ${recipientEmail}`
+            };
+        }
+
         const formattedMessage = recipientName 
             ? `Hello ${recipientName},\n\n${message}\n\nBest regards,\nManagement`
             : `${message}\n\nBest regards,\nManagement`;
@@ -77,6 +109,14 @@ const sendFlexibleEmail = async (options) => {
     try {
         if (!options.to || !options.subject) {
             throw new Error('Missing required email fields (to, subject)');
+        }
+
+        // Validate email first
+        if (!validateEmail(options.to)) {
+            return { 
+                success: false, 
+                error: `Invalid email address: ${options.to}`
+            };
         }
 
         const mailOptions = {
@@ -132,7 +172,8 @@ module.exports = {
     sendSchedulePdf,
     sendEmail,
     sendFlexibleEmail,
-    testEmailConnection
+    testEmailConnection,
+    validateEmail
 };
 
 // Example usage:
