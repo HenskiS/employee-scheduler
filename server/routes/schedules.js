@@ -177,7 +177,7 @@ router.post('/send-emails', authMiddleware, async (req, res) => {
           responseId, 
           techId, 
           emailResult.success ? 'completed' : 'failed',
-          emailResult.success ? resultInfo : { error: emailResult.error }
+          emailResult.success ? resultInfo : { error: emailResult.error, technicianName }
         );
         
       } catch (error) {
@@ -188,8 +188,10 @@ router.post('/send-emails', authMiddleware, async (req, res) => {
         };
         errors.push(errorInfo);
         
-        // Update technician status to "failed"
-        updateTechnicianStatus(responseId, techId, 'failed', errorInfo);
+        // Update technician status to "failed" with technician name
+        const technicianName = typeof tech === 'object' ? tech.name : 
+            (await Technician.findByPk(tech))?.name || `Technician ${techId}`;
+        updateTechnicianStatus(responseId, techId, 'failed', { ...errorInfo, technicianName });
       }
     }
     
