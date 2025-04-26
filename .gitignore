@@ -13,6 +13,7 @@ client/build/*
 server/database.sqlite
 
 *.sqlite
+*.sql
 
 client/oldBuild/
 config/Client List with Schedulers 03112025.xlsx
