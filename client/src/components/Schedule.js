@@ -11,6 +11,7 @@ import PeopleDialog from './PeopleDialog';
 import PrintDialog from './PrintDialog';
 import EmailScheduleDialog from './email/EmailScheduleDialog';
 import EmailStatusDialog from './email/EmailStatusDialog';
+import BackupDialog from './BackupDialog';
 import PrintHandler from './PrintHandler';
 import { useScheduling } from './SchedulingContext';
 import axios from '../api/axios'
@@ -28,6 +29,7 @@ function Schedule() {
   const [alertMessage, setAlertMessage] = useState('');
   const [alertSeverity, setAlertSeverity] = useState('success');
   const [showAlert, setShowAlert] = useState(false);
+  const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
   
   const { events, updateDateRange } = useScheduling();
   const [filteredEvents, setFilteredEvents] = useState([]);
@@ -184,7 +186,9 @@ function Schedule() {
             <Button startIcon={<EmailIcon />} onClick={handleOpenEmailDialog}>
               Email Schedules
             </Button>
-            <Button startIcon={<SettingsIcon />}>Settings</Button>
+            <Button startIcon={<SettingsIcon />} onClick={() => setIsBackupDialogOpen(true)}>
+              Settings
+            </Button>
           </Box>
           <Box mt={2}>
             {tabValue === 0 && <Calendar view="jobs" />}
@@ -212,6 +216,10 @@ function Schedule() {
         open={isEmailStatusDialogOpen}
         onClose={handleCloseEmailStatusDialog}
         statusId={emailStatusId}
+      />
+      <BackupDialog 
+        open={isBackupDialogOpen} 
+        onClose={() => setIsBackupDialogOpen(false)} 
       />
       
       <Snackbar 
