@@ -12,6 +12,7 @@ const generatePDF = async (url, options = {}) => {
   try {
     // Launch a new browser instance
     browser = await puppeteer.launch({
+      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       headless: 'new', // Use new headless mode
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
