@@ -238,7 +238,7 @@ function BackupDialog({ open, onClose }) {
               }
             />
             <Box display="flex" gap={1}>
-              {backup.location === 'local' && backup.type === 'daily' && status?.dropboxEnabled && !isBackupInCloud(backup) && (
+              {backup.location === 'local' && (backup.type === 'daily' || backup.type === 'manual') && status?.dropboxEnabled && !isBackupInCloud(backup) && (
                 <Tooltip title="Upload to Dropbox">
                   <IconButton
                     onClick={() => uploadToCloud(backup.path, backup.filename)}
@@ -251,7 +251,7 @@ function BackupDialog({ open, onClose }) {
                 </Tooltip>
               )}
               
-              {backup.location === 'local' && backup.type === 'daily' && status?.dropboxEnabled && isBackupInCloud(backup) && (
+              {backup.location === 'local' && (backup.type === 'daily' || backup.type === 'manual') && status?.dropboxEnabled && isBackupInCloud(backup) && (
                 <Tooltip title="Already in Dropbox">
                   <IconButton
                     disabled
