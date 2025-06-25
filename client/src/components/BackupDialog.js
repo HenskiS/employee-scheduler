@@ -13,24 +13,34 @@ import {
   Box,
   Chip,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Tabs,
+  Tab,
+  Tooltip
 } from '@mui/material';
 import {
   Restore as RestoreIcon,
   Add as AddIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  CloudDownload as CloudDownloadIcon,
+  CloudUpload as CloudUploadIcon,
+  Computer as ComputerIcon,
+  Cloud as CloudIcon
 } from '@mui/icons-material';
 import axios from '../api/axios';
 
 function BackupDialog({ open, onClose }) {
   const [backups, setBackups] = useState({});
+  const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [tabValue, setTabValue] = useState(0);
 
   useEffect(() => {
     if (open) {
       loadBackups();
+      loadStatus();
     }
   }, [open]);
 
@@ -46,22 +56,33 @@ function BackupDialog({ open, onClose }) {
     setLoading(false);
   };
 
+  const loadStatus = async () => {
+    try {
+      const response = await axios.get('/backup/status');
+      setStatus(response.data.status);
+    } catch (err) {
+      console.warn('Failed to load backup status');
+    }
+  };
+
   const createBackup = async () => {
     setLoading(true);
     setError('');
     setSuccess('');
     try {
       await axios.post('/backup');
-      setSuccess('Backup created successfully');
+      setSuccess('Manual backup created successfully');
       loadBackups();
+      loadStatus();
     } catch (err) {
       setError('Failed to create backup');
     }
     setLoading(false);
   };
 
-  const restoreBackup = async (backupPath) => {
-    if (!window.confirm('Are you sure? This will restore the database to this backup.')) {
+  const restoreBackup = async (backupPath, location = 'local') => {
+    const locationText = location === 'dropbox' ? 'cloud backup' : 'local backup';
+    if (!window.confirm(`Are you sure? This will restore the database from this ${locationText}.`)) {
       return;
     }
     
@@ -69,10 +90,41 @@ function BackupDialog({ open, onClose }) {
     setError('');
     setSuccess('');
     try {
-      await axios.post('/backup/restore', { backupPath });
-      setSuccess('Backup restored successfully');
+      await axios.post('/backup/restore', { 
+        backupPath,
+        location 
+      });
+      setSuccess(`Database restored successfully from ${locationText}`);
     } catch (err) {
-      setError('Failed to restore backup');
+      setError(`Failed to restore from ${locationText}`);
+    }
+    setLoading(false);
+  };
+
+  const uploadToCloud = async (backupPath, filename) => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await axios.post('/backup/upload', { backupPath, filename });
+      setSuccess('Backup uploaded to Dropbox successfully');
+      loadBackups();
+    } catch (err) {
+      setError('Failed to upload to Dropbox');
+    }
+    setLoading(false);
+  };
+
+  const downloadFromCloud = async (remotePath, filename) => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await axios.post('/backup/download', { remotePath, filename });
+      setSuccess('Backup downloaded from Dropbox successfully');
+      loadBackups();
+    } catch (err) {
+      setError('Failed to download from Dropbox');
     }
     setLoading(false);
   };
@@ -91,23 +143,145 @@ function BackupDialog({ open, onClose }) {
       manual: 'primary',
       hourly: 'success',
       daily: 'info',
-      weekly: 'warning'
+      weekly: 'warning',
+      cloud: 'secondary'
     };
     return colors[type] || 'default';
   };
-  const allBackups = Object.entries(backups || {})
+
+  const getLocationIcon = (location) => {
+    return location === 'dropbox' ? <CloudIcon /> : <ComputerIcon />;
+  };
+
+  // Prepare local backups (exclude cloud)
+  const localBackups = Object.entries(backups || {})
+    .filter(([type]) => type !== 'cloud')
     .flatMap(([type, items]) => 
-      (items || []).map(item => ({ ...item, type }))
+      (items || []).map(item => ({ ...item, type, location: 'local' }))
     )
     .sort((a, b) => new Date(b.created) - new Date(a.created));
 
+  // Cloud backups
+  const cloudBackups = (backups.cloud || [])
+    .map(item => ({ ...item, type: 'cloud', location: 'dropbox' }))
+    .sort((a, b) => new Date(b.created) - new Date(a.created));
+
+  // All backups combined for "All" tab
+  const allBackups = [...localBackups, ...cloudBackups]
+    .sort((a, b) => new Date(b.created) - new Date(a.created));
+
+  const renderBackupList = (backupList) => {
+    if (loading) {
+      return (
+        <Box display="flex" justifyContent="center" p={2}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (backupList.length === 0) {
+      return (
+        <Typography color="textSecondary" align="center" sx={{ p: 2 }}>
+          No backups found
+        </Typography>
+      );
+    }
+
+    return (
+      <List>
+        {backupList.map((backup, index) => (
+          <ListItem 
+            key={`${backup.type}-${backup.location}-${index}`} 
+            divider
+            sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          >
+            <ListItemText
+              primary={
+                <Box display="flex" alignItems="center" gap={1}>
+                  {getLocationIcon(backup.location)}
+                  <Typography variant="body1">
+                    {backup.filename}
+                  </Typography>
+                  <Chip 
+                    label={backup.type} 
+                    size="small" 
+                    color={getTypeColor(backup.type)}
+                  />
+                  {backup.location === 'dropbox' && (
+                    <Chip 
+                      label="Cloud" 
+                      size="small" 
+                      variant="outlined"
+                      color="secondary"
+                    />
+                  )}
+                </Box>
+              }
+              secondary={
+                <Box>
+                  <Typography variant="body2" color="textSecondary">
+                    {formatDate(backup.created)} • {formatSize(backup.size)}
+                  </Typography>
+                </Box>
+              }
+            />
+            <Box display="flex" gap={1}>
+              {backup.location === 'local' && backup.type === 'daily' && status?.dropboxEnabled && (
+                <Tooltip title="Upload to Dropbox">
+                  <IconButton
+                    onClick={() => uploadToCloud(backup.path, backup.filename)}
+                    disabled={loading}
+                    color="secondary"
+                    size="small"
+                  >
+                    <CloudUploadIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
+              
+              {backup.location === 'dropbox' && (
+                <Tooltip title="Download from Dropbox">
+                  <IconButton
+                    onClick={() => downloadFromCloud(backup.path, backup.filename)}
+                    disabled={loading}
+                    color="secondary"
+                    size="small"
+                  >
+                    <CloudDownloadIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
+              
+              <Tooltip title={`Restore from ${backup.location === 'dropbox' ? 'cloud' : 'local'}`}>
+                <IconButton
+                  onClick={() => restoreBackup(backup.path, backup.location)}
+                  disabled={loading}
+                  color="primary"
+                >
+                  <RestoreIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </ListItem>
+        ))}
+      </List>
+    );
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          Backup Management
           <Box>
-            <IconButton onClick={loadBackups} disabled={loading}>
+            <Typography variant="h6">Backup Management</Typography>
+            {status && (
+              <Typography variant="body2" color="textSecondary">
+                {status.totalBackups} total backups • {status.dropboxEnabled ? 'Cloud enabled' : 'Local only'}
+              </Typography>
+            )}
+          </Box>
+          <Box>
+            <IconButton onClick={() => { loadBackups(); loadStatus(); }} disabled={loading}>
               <RefreshIcon />
             </IconButton>
             <Button
@@ -117,7 +291,7 @@ function BackupDialog({ open, onClose }) {
               variant="contained"
               size="small"
             >
-              Create Backup
+              Create Manual Backup
             </Button>
           </Box>
         </Box>
@@ -127,57 +301,75 @@ function BackupDialog({ open, onClose }) {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
         
-        {loading && (
-          <Box display="flex" justifyContent="center" p={2}>
-            <CircularProgress />
+        {status && !status.dropboxEnabled && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              Cloud backup is disabled. Add DROPBOX_ACCESS_TOKEN to enable automatic cloud backups.
+            </Typography>
+          </Alert>
+        )}
+
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+            <Tab 
+              label={`All (${allBackups.length})`} 
+              icon={<ComputerIcon />} 
+              iconPosition="start"
+            />
+            <Tab 
+              label={`Local (${localBackups.length})`} 
+              icon={<ComputerIcon />} 
+              iconPosition="start"
+            />
+            <Tab 
+              label={`Cloud (${cloudBackups.length})`} 
+              icon={<CloudIcon />} 
+              iconPosition="start"
+              disabled={!status?.dropboxEnabled}
+            />
+          </Tabs>
+        </Box>
+
+        {tabValue === 0 && renderBackupList(allBackups)}
+        {tabValue === 1 && renderBackupList(localBackups)}
+        {tabValue === 2 && renderBackupList(cloudBackups)}
+        
+        {status && (
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="subtitle2" gutterBottom>Backup Summary</Typography>
+            <Box display="flex" gap={3} flexWrap="wrap">
+              <Typography variant="body2">
+                Hourly: {status.byType.hourly}
+              </Typography>
+              <Typography variant="body2">
+                Daily: {status.byType.daily}
+              </Typography>
+              <Typography variant="body2">
+                Weekly: {status.byType.weekly}
+              </Typography>
+              <Typography variant="body2">
+                Manual: {status.byType.manual}
+              </Typography>
+              {status.dropboxEnabled && (
+                <Typography variant="body2">
+                  Cloud: {status.byType.cloud}
+                </Typography>
+              )}
+              <Typography variant="body2">
+                Local Size: {formatSize(status.totalLocalSize)}
+              </Typography>
+            </Box>
+            {status.lastBackup && (
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                Last backup: {formatDate(status.lastBackup)}
+              </Typography>
+            )}
+            {status.lastCloudBackup && (
+              <Typography variant="body2" color="textSecondary">
+                Last cloud backup: {formatDate(status.lastCloudBackup)}
+              </Typography>
+            )}
           </Box>
-        )}
-        
-        {!loading && allBackups.length === 0 && (
-          <Typography color="textSecondary" align="center">
-            No backups found
-          </Typography>
-        )}
-        
-        {!loading && allBackups.length > 0 && (
-          <List>
-            {allBackups.map((backup, index) => (
-              <ListItem 
-                key={`${backup.type}-${index}`} 
-                divider
-                sx={{ display: 'flex', justifyContent: 'space-between' }}
-              >
-                <ListItemText
-                  primary={
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Typography variant="body1">
-                        {backup.filename}
-                      </Typography>
-                      <Chip 
-                        label={backup.type} 
-                        size="small" 
-                        color={getTypeColor(backup.type)}
-                      />
-                    </Box>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography variant="body2" color="textSecondary">
-                        {formatDate(backup.created)} • {formatSize(backup.size)}
-                      </Typography>
-                    </Box>
-                  }
-                />
-                <IconButton
-                  onClick={() => restoreBackup(backup.path)}
-                  disabled={loading}
-                  color="primary"
-                >
-                  <RestoreIcon />
-                </IconButton>
-              </ListItem>
-            ))}
-          </List>
         )}
       </DialogContent>
       
