@@ -153,6 +153,18 @@ function BackupDialog({ open, onClose }) {
     return location === 'dropbox' ? <CloudIcon /> : <ComputerIcon />;
   };
 
+  const isBackupInCloud = (localBackup) => {
+    if (!backups.cloud) return false;
+    
+    // Check if a cloud backup exists with the same timestamp/content
+    // We'll match by checking if the filename (with daily instead of hourly) exists in cloud
+    const expectedCloudName = localBackup.filename.replace('_daily.sql', '_daily.sql');
+    return backups.cloud.some(cloudBackup => 
+      cloudBackup.filename === expectedCloudName ||
+      cloudBackup.filename.includes(localBackup.filename.split('_')[1]) // Match by timestamp
+    );
+  };
+
   // Prepare local backups (exclude cloud)
   const localBackups = Object.entries(backups || {})
     .filter(([type]) => type !== 'cloud')
@@ -226,7 +238,7 @@ function BackupDialog({ open, onClose }) {
               }
             />
             <Box display="flex" gap={1}>
-              {backup.location === 'local' && backup.type === 'daily' && status?.dropboxEnabled && (
+              {backup.location === 'local' && backup.type === 'daily' && status?.dropboxEnabled && !isBackupInCloud(backup) && (
                 <Tooltip title="Upload to Dropbox">
                   <IconButton
                     onClick={() => uploadToCloud(backup.path, backup.filename)}
@@ -235,6 +247,18 @@ function BackupDialog({ open, onClose }) {
                     size="small"
                   >
                     <CloudUploadIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
+              
+              {backup.location === 'local' && backup.type === 'daily' && status?.dropboxEnabled && isBackupInCloud(backup) && (
+                <Tooltip title="Already in Dropbox">
+                  <IconButton
+                    disabled
+                    color="success"
+                    size="small"
+                  >
+                    <CloudIcon />
                   </IconButton>
                 </Tooltip>
               )}
