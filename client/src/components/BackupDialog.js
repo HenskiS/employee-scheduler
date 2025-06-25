@@ -227,7 +227,7 @@ function BackupDialog({ open, onClose }) {
                     size="small" 
                     color={getTypeColor(backup.type)}
                   />
-                  {backup.location === 'dropbox' && (
+                  {backup.location === 'dropbox' && backup.type !== 'cloud' && (
                     <Chip 
                       label="Cloud" 
                       size="small" 
