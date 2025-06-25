@@ -154,15 +154,23 @@ function BackupDialog({ open, onClose }) {
   };
 
   const isBackupInCloud = (localBackup) => {
-    if (!backups.cloud) return false;
+    if (!backups.cloud || !Array.isArray(backups.cloud)) return false;
     
-    // Check if a cloud backup exists with the same timestamp/content
-    // We'll match by checking if the filename (with daily instead of hourly) exists in cloud
-    const expectedCloudName = localBackup.filename.replace('_daily.sql', '_daily.sql');
-    return backups.cloud.some(cloudBackup => 
-      cloudBackup.filename === expectedCloudName ||
-      cloudBackup.filename.includes(localBackup.filename.split('_')[1]) // Match by timestamp
-    );
+    // Extract the timestamp from the filename to match across types
+    // Format: scheduling_app_TIMESTAMP_TYPE.sql
+    const timestampMatch = localBackup.filename.match(/scheduling_app_(.+?)_(daily|manual|hourly|weekly)\.sql/);
+    if (!timestampMatch) return false;
+    
+    const timestamp = timestampMatch[1];
+    
+    // Check if any cloud backup has the same timestamp
+    return backups.cloud.some(cloudBackup => {
+      const cloudTimestampMatch = cloudBackup.filename.match(/scheduling_app_(.+?)_(daily|manual|hourly|weekly)\.sql/);
+      if (!cloudTimestampMatch) return false;
+      
+      const cloudTimestamp = cloudTimestampMatch[1];
+      return cloudTimestamp === timestamp;
+    });
   };
 
   // Prepare local backups (exclude cloud)
