@@ -187,7 +187,7 @@ function Schedule() {
               Email Schedules
             </Button>
             <Button startIcon={<SettingsIcon />} onClick={() => setIsBackupDialogOpen(true)}>
-              Settings
+              Backup
             </Button>
           </Box>
           <Box mt={2}>

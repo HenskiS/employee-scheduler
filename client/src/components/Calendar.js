@@ -138,7 +138,8 @@ const MyCalendar = () => {
           description: event.description,
           resourceId: event.jobNumber,
           allDay: event.allDay,
-          label: event.label
+          label: event.label,
+          Doctor: event.Doctor
         }];
       } else {
         // Create an event instance for each technician assigned to the event
@@ -150,7 +151,8 @@ const MyCalendar = () => {
           description: event.description,
           resourceId: technician.id, // Use technician ID as resource ID
           allDay: event.allDay,
-          label: event.label
+          label: event.label,
+          Doctor: event.Doctor
         }));
       }
     });
@@ -187,6 +189,7 @@ const MyCalendar = () => {
         <div style={timeStyle}>{`${startTime} – ${endTime}`}</div>
         <div style={titleStyle}>{event.title}</div>
         <div style={timeStyle}>{event.description}</div>
+        <div style={timeStyle}>{event.Doctor?.customer || ""}</div>
       </div>
     );
   };
