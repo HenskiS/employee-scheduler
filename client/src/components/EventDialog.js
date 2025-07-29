@@ -11,6 +11,12 @@ import {
   Checkbox,
   Autocomplete,
   FormHelperText,
+  Alert,
+  AlertTitle,
+  Box,
+  Typography,
+  Paper,
+  Divider,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -21,7 +27,16 @@ import RecurringEventForm from './RecurringEventForm';
 import TechnicianSelector from './TechnicianSelector';
 import RecurringEventChoiceDialog from './RecurringEventChoiceDialog';
 
-function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
+function EventDialog({ 
+  open, 
+  onClose, 
+  event, 
+  onSave, 
+  onDelete, 
+  newEvent, 
+  conflictError, 
+  onClearConflicts 
+}) {
   const { technicians, doctors, labels, throughThirty } = useScheduling();
 
   const [formData, setFormData] = useState({
@@ -46,6 +61,7 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
   });
   const [showRecurringChoice, setShowRecurringChoice] = useState(false);
   const [recurringAction, setRecurringAction] = useState(null);
+  const [showConflicts, setShowConflicts] = useState(false);
 
   useEffect(() => {
     if (event) {
@@ -86,6 +102,13 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
       });
     }
   }, [event, newEvent]);
+
+  // Show conflicts when they are received
+  useEffect(() => {
+    if (conflictError) {
+      setShowConflicts(true);
+    }
+  }, [conflictError]);
 
   const validateForm = () => {
     const newErrors = {
@@ -154,7 +177,7 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
     setFormData({ ...formData, [name]: checked });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (force = false) => {
     if (!validateForm()) return;
     
     // Check if "All Technicians" is selected
@@ -174,8 +197,7 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
       setRecurringAction('edit');
       setShowRecurringChoice(true);
     } else {
-      onSave(eventData);
-      onClose();
+      onSave(eventData, 'single', force);
     }
   };
 
@@ -185,7 +207,6 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
       setShowRecurringChoice(true);
     } else if (window.confirm("Are you sure you wish to delete this event?")) {
       onDelete();
-      onClose();
     }
   };
   
@@ -211,7 +232,6 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
     } else if (recurringAction === 'delete') {
       onDelete(choice);
     }
-    onClose();
   };
 
   const handleSave = (rrule) => {
@@ -219,12 +239,78 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
     else setFormData({ ...formData, recurrencePattern: rrule});
   };
 
+  const handleTryAgain = () => {
+    setShowConflicts(false);
+    if (onClearConflicts) {
+      onClearConflicts();
+    }
+    handleSubmit(false);
+  };
+
+  const handleForceOverride = () => {
+    handleSubmit(true);
+  };
+
+  const formatDateTime = (dateTime) => {
+    return moment(dateTime).format('MMM D, YYYY h:mm A');
+  };
+
+  const ConflictDisplay = ({ conflicts }) => (
+    <Box sx={{ mb: 2 }}>
+      <Alert severity="warning" sx={{ mb: 2 }}>
+        <AlertTitle>⚠️ Scheduling Conflicts Detected</AlertTitle>
+        <Typography variant="body2" sx={{ mb: 2 }}>
+          The following technicians are already scheduled during this time:
+        </Typography>
+        
+        {conflicts.map((conflict, index) => (
+          <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: '#fff7ed' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#7c2d12', mb: 1 }}>
+              {conflict.technicianName}
+            </Typography>
+            {conflict.conflictingEvents.map((conflictEvent, eventIndex) => (
+              <Box key={eventIndex} sx={{ ml: 2, mb: 1 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  {conflictEvent.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Job: {conflictEvent.jobNumber}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {formatDateTime(conflictEvent.startTime)} - {formatDateTime(conflictEvent.endTime)}
+                </Typography>
+              </Box>
+            ))}
+          </Paper>
+        ))}
+        
+        <Paper sx={{ p: 2, bgcolor: '#fffbeb' }}>
+          <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+            Options:
+          </Typography>
+          <Typography variant="body2" component="div">
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li>Modify the event time or remove conflicting technicians</li>
+              <li>Use "Force Save" to override conflicts</li>
+              <li>Cancel to review and adjust manually</li>
+            </ul>
+          </Typography>
+        </Paper>
+      </Alert>
+    </Box>
+  );
+
   return (
     <>
     <LocalizationProvider dateAdapter={AdapterMoment}>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle>{event ? 'Edit Event' : 'New Event'}</DialogTitle>
         <DialogContent>
+          {/* Show conflicts if they exist */}
+          {conflictError && showConflicts && (
+            <ConflictDisplay conflicts={conflictError.conflicts} />
+          )}
+
           <TextField
             autoFocus
             margin="dense"
@@ -254,6 +340,7 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
             label="Doctor"
             options={doctors}
             getOptionLabel={option => option.customer}
+            getOptionKey={option => option.id}
             value={formData.DoctorId ? doctors.filter(doc => doc.id === formData.DoctorId)[0] : null}
             onChange={(event, newValue) => {
               handleInputChange({
@@ -382,9 +469,37 @@ function EventDialog({ open, onClose, event, onSave, onDelete, newEvent }) {
             </Button>
           )}
           <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} color="primary">
-            {event ? 'Update' : 'Create'}
-          </Button>
+          
+          {/* Show conflict-specific buttons when there are conflicts */}
+          {conflictError && showConflicts && (
+            <>
+              <Button 
+                onClick={handleForceOverride} 
+                color="warning"
+                variant="outlined"
+              >
+                Force Save
+              </Button>
+              <Button 
+                onClick={handleTryAgain} 
+                color="primary"
+                variant="contained"
+              >
+                Try Again
+              </Button>
+            </>
+          )}
+          
+          {/* Show normal save button when no conflicts or conflicts are hidden */}
+          {(!conflictError || !showConflicts) && (
+            <Button 
+              onClick={() => handleSubmit(false)} 
+              color="primary"
+              variant="contained"
+            >
+              {event ? 'Update' : 'Create'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </LocalizationProvider>
