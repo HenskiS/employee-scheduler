@@ -173,8 +173,8 @@ async function checkTechnicianConflicts(eventToUpdate, newTechnicianIds, newStar
 }
 
 // Helper function to check conflicts for new events (including recurring ones)
-async function checkNewEventConflicts(startTime, endTime, technicianIds, recurrencePattern = null) {
-  if (!technicianIds || technicianIds.length === 0) {
+async function checkNewEventConflicts(startTime, endTime, technicianIds, recurrencePattern = null, isAllDay) {
+  if (!technicianIds || technicianIds.length === 0 || isAllDay) {
     return { hasConflicts: false, conflicts: [] };
   }
 
@@ -311,7 +311,8 @@ router.post('/', authMiddleware, async (req, res) => {
         startTime,
         endTime,
         technicianIds,
-        isRecurring ? recurrencePattern : null
+        isRecurring ? recurrencePattern : null,
+        req.body.allDay
       );
       
       if (conflictCheck.hasConflicts) {
