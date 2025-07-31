@@ -20,6 +20,7 @@ const MyCalendar = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { colorMap } = useScheduling();
   const [currentView, setCurrentView] = useState('day'); // cal view (day/agenda)
+  const [conflictError, setConflictError] = useState(null);
 
   // Modified to handle both job numbers and technician resources
   useEffect(() => {
@@ -49,6 +50,7 @@ const MyCalendar = () => {
     const event = findEventById(e.id);
     setSelectedEvent(event);
     setNewEvent(null);
+    setConflictError(null); // Clear any previous conflicts
     setIsDialogOpen(true); 
   };
 
@@ -68,6 +70,7 @@ const MyCalendar = () => {
       };
       setSelectedEvent(null);
       setNewEvent(newEvent);
+      setConflictError(null); // Clear any previous conflicts
       setIsDialogOpen(true);
     }
   };
@@ -75,26 +78,49 @@ const MyCalendar = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setSelectedEvent(null);
+    setNewEvent(null);
+    setConflictError(null); // Clear conflicts when closing
   };
 
-  const handleSaveEvent = async (event, updateType = 'single') => {
+  const handleSaveEvent = async (event, updateType = 'single', force = false) => {
     try {
+      let url;
+      let response;
+      
       if (event.id) {
-        await axios.put(`/events/${event.id}?updateType=${updateType}`, event);
+        url = `/events/${event.id}?updateType=${updateType}`;
+        if (force) url += '&force=true';
+        response = await axios.put(url, event);
       } else {
-        await axios.post('/events', event);
+        url = '/events';
+        if (force) url += '?force=true';
+        response = await axios.post(url, event);
       }
+      
+      // If successful, refresh data and close dialog
       refreshData();
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving event:', error);
+      
+      // Check if it's a conflict error
+      if (error.response && error.response.status === 409 && error.response.data.hasConflicts) {
+        setConflictError(error.response.data);
+        // Don't close the dialog - let user decide what to do
+      } else {
+        // For other errors, you might want to show a general error message
+        // but still keep the dialog open
+        console.error('Non-conflict error:', error);
+      }
     }
   };
+
   const handleDeleteEvent = async (deleteType = 'single') => {
     if (selectedEvent?.id) {
       try {
         await axios.delete(`/events/${selectedEvent.id}?deleteType=${deleteType}`);
         refreshData();
+        handleCloseDialog();
       } catch (error) {
         console.error('Error deleting event:', error);
       }
@@ -138,7 +164,8 @@ const MyCalendar = () => {
           description: event.description,
           resourceId: event.jobNumber,
           allDay: event.allDay,
-          label: event.label
+          label: event.label,
+          Doctor: event.Doctor
         }];
       } else {
         // Create an event instance for each technician assigned to the event
@@ -150,7 +177,8 @@ const MyCalendar = () => {
           description: event.description,
           resourceId: technician.id, // Use technician ID as resource ID
           allDay: event.allDay,
-          label: event.label
+          label: event.label,
+          Doctor: event.Doctor
         }));
       }
     });
@@ -187,6 +215,7 @@ const MyCalendar = () => {
         <div style={timeStyle}>{`${startTime} – ${endTime}`}</div>
         <div style={titleStyle}>{event.title}</div>
         <div style={timeStyle}>{event.description}</div>
+        <div style={timeStyle}>{event.Doctor?.customer || ""}</div>
       </div>
     );
   };
@@ -207,6 +236,8 @@ const MyCalendar = () => {
           onClose={handleCloseDialog} 
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
+          conflictError={conflictError}
+          onClearConflicts={() => setConflictError(null)}
         />
       )}
       <Calendar

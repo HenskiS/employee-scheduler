@@ -14,14 +14,16 @@ const Calendar = ({
   dateRange = null,
   filterParams = {},
 }) => {
-  const { technicians, doctors, labels, throughThirty, refreshData } = useScheduling();
+  const { refreshData } = useScheduling();
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [newEvent, setNewEvent] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [conflictError, setConflictError] = useState(null);
 
   const handleSelectEvent = (event) => {
     setSelectedEvent(event);
     setNewEvent(null);
+    setConflictError(null); // Clear any previous conflicts
     setIsDialogOpen(true);
   };
 
@@ -35,6 +37,7 @@ const Calendar = ({
     };
     setSelectedEvent(null);
     setNewEvent(newEventData);
+    setConflictError(null); // Clear any previous conflicts
     setIsDialogOpen(true);
   };
 
@@ -42,19 +45,39 @@ const Calendar = ({
     setIsDialogOpen(false);
     setSelectedEvent(null);
     setNewEvent(null);
+    setConflictError(null); // Clear conflicts when closing
   };
 
-  const handleSaveEvent = async (event, updateType = 'single') => {
+  const handleSaveEvent = async (event, updateType = 'single', force = false) => {
     try {
+      let url;
+      let response;
+      
       if (event.id) {
-        await axios.put(`/events/${event.id}?updateType=${updateType}`, event);
+        url = `/events/${event.id}?updateType=${updateType}`;
+        if (force) url += '&force=true';
+        response = await axios.put(url, event);
       } else {
-        await axios.post('/events', event);
+        url = '/events';
+        if (force) url += '?force=true';
+        response = await axios.post(url, event);
       }
+      
+      // If successful, refresh data and close dialog
       refreshData();
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving event:', error);
+      
+      // Check if it's a conflict error
+      if (error.response && error.response.status === 409 && error.response.data.hasConflicts) {
+        setConflictError(error.response.data);
+        // Don't close the dialog - let user decide what to do
+      } else {
+        // For other errors, you might want to show a general error message
+        // but still keep the dialog open
+        console.error('Non-conflict error:', error);
+      }
     }
   };
 
@@ -170,6 +193,8 @@ const Calendar = ({
           onClose={handleCloseDialog}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
+          conflictError={conflictError}
+          onClearConflicts={() => setConflictError(null)}
         />
       )}
       {view === 'agenda' ? (
