@@ -172,20 +172,109 @@ async function checkTechnicianConflicts(eventToUpdate, newTechnicianIds, newStar
   };
 }
 
-// Helper function to check conflicts for new events (including recurring ones)
-async function checkNewEventConflicts(startTime, endTime, technicianIds, recurrencePattern = null, isAllDay) {
-  if (!technicianIds || technicianIds.length === 0 || isAllDay) {
+// Helper function to check for doctor scheduling conflicts
+async function checkDoctorConflicts(eventToUpdate, newDoctorId, newStartTime, newEndTime, updateType = 'single') {
+  if (!newDoctorId) {
+    return { hasConflicts: false, conflicts: [] };
+  }
+  if (eventToUpdate.allDay) {
     return { hasConflicts: false, conflicts: [] };
   }
 
   const conflicts = [];
+  
+  // Get events to check based on updateType
+  let eventsToCheck = [];
+  
+  if (updateType === 'single') {
+    eventsToCheck = [{ 
+      id: eventToUpdate.id, 
+      startTime: newStartTime, 
+      endTime: newEndTime,
+      doctorId: newDoctorId 
+    }];
+  } else if (updateType === 'future') {
+    // For future updates, we need to check all future recurring events
+    const originalEventReference = eventToUpdate.originalEventId || eventToUpdate.id;
+    const futureRecurrences = await Event.findAll({
+      where: {
+        [Op.or]: [
+          { id: originalEventReference },
+          { originalEventId: originalEventReference }
+        ],
+        startTime: { [Op.gte]: eventToUpdate.startTime }
+      }
+    });
+    
+    // Calculate time differences for each future event
+    eventsToCheck = futureRecurrences.map(recurringEvent => {
+      const timeDiff = new Date(recurringEvent.startTime) - new Date(eventToUpdate.startTime);
+      return {
+        id: recurringEvent.id,
+        startTime: new Date(new Date(newStartTime).getTime() + timeDiff),
+        endTime: new Date(new Date(newEndTime).getTime() + timeDiff),
+        doctorId: newDoctorId
+      };
+    });
+  }
+
+  // Check each event for conflicts
+  for (const eventCheck of eventsToCheck) {
+    // Find conflicting events for this doctor
+    const conflictingEvents = await Event.findAll({
+      where: {
+        id: { [Op.ne]: eventCheck.id }, // Exclude the event being updated
+        allDay: false, // Ignore all-day events
+        DoctorId: eventCheck.doctorId, // Same doctor
+        [Op.and]: [
+          // Time overlap condition
+          {
+            startTime: { [Op.lt]: eventCheck.endTime }
+          },
+          {
+            endTime: { [Op.gt]: eventCheck.startTime }
+          }
+        ]
+      },
+      include: [{ model: Doctor }]
+    });
+
+    if (conflictingEvents.length > 0) {
+      // Get doctor details
+      const doctor = await Doctor.findByPk(eventCheck.doctorId);
+      
+      conflicts.push({
+        doctorId: eventCheck.doctorId,
+        doctorName: doctor.name,
+        conflictingEvents: conflictingEvents.map(event => ({
+          id: event.id,
+          name: event.name,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          jobNumber: event.jobNumber
+        }))
+      });
+    }
+  }
+
+  return {
+    hasConflicts: conflicts.length > 0,
+    conflicts
+  };
+}
+
+// Helper function to check conflicts for new events (including recurring ones)
+async function checkNewEventConflicts(startTime, endTime, technicianIds, doctorId, recurrencePattern = null, isAllDay) {
+  const technicianConflicts = [];
+  const doctorConflicts = [];
   const eventsToCheck = [];
 
   // Add the main event
   eventsToCheck.push({
     startTime: new Date(startTime),
     endTime: new Date(endTime),
-    technicianIds
+    technicianIds: technicianIds || [],
+    doctorId: doctorId
   });
 
   // If recurring, add all the recurring instances that would be created
@@ -200,7 +289,8 @@ async function checkNewEventConflicts(startTime, endTime, technicianIds, recurre
         eventsToCheck.push({
           startTime: start,
           endTime: end,
-          technicianIds
+          technicianIds: technicianIds || [],
+          doctorId: doctorId
         });
       });
     } catch (error) {
@@ -209,13 +299,68 @@ async function checkNewEventConflicts(startTime, endTime, technicianIds, recurre
     }
   }
 
-  // Check each event for conflicts
-  for (const eventCheck of eventsToCheck) {
-    for (const techId of eventCheck.technicianIds) {
-      // Find conflicting events for this technician
+  // Check technician conflicts if not all-day and technicians exist
+  if (!isAllDay && technicianIds && technicianIds.length > 0) {
+    for (const eventCheck of eventsToCheck) {
+      for (const techId of eventCheck.technicianIds) {
+        // Find conflicting events for this technician
+        const conflictingEvents = await Event.findAll({
+          where: {
+            allDay: false, // Ignore all-day events
+            [Op.and]: [
+              // Time overlap condition
+              {
+                startTime: { [Op.lt]: eventCheck.endTime }
+              },
+              {
+                endTime: { [Op.gt]: eventCheck.startTime }
+              }
+            ]
+          },
+          include: [
+            {
+              model: Technician,
+              where: { id: techId },
+              through: { attributes: [] }
+            }
+          ]
+        });
+
+        if (conflictingEvents.length > 0) {
+          // Get technician details
+          const technician = await Technician.findByPk(techId);
+          
+          const existingConflict = technicianConflicts.find(c => c.technicianId === techId);
+          const conflictEventData = conflictingEvents.map(event => ({
+            id: event.id,
+            name: event.name,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            jobNumber: event.jobNumber
+          }));
+
+          if (existingConflict) {
+            existingConflict.conflictingEvents.push(...conflictEventData);
+          } else {
+            technicianConflicts.push({
+              technicianId: techId,
+              technicianName: technician.name,
+              conflictingEvents: conflictEventData
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Check doctor conflicts if not all-day and doctor exists
+  if (!isAllDay && doctorId) {
+    for (const eventCheck of eventsToCheck) {
+      // Find conflicting events for this doctor
       const conflictingEvents = await Event.findAll({
         where: {
           allDay: false, // Ignore all-day events
+          DoctorId: eventCheck.doctorId, // Same doctor
           [Op.and]: [
             // Time overlap condition
             {
@@ -226,44 +371,34 @@ async function checkNewEventConflicts(startTime, endTime, technicianIds, recurre
             }
           ]
         },
-        include: [
-          {
-            model: Technician,
-            where: { id: techId },
-            through: { attributes: [] }
-          }
-        ]
+        include: [{ model: Doctor }]
       });
 
       if (conflictingEvents.length > 0) {
-        // Get technician details
-        const technician = await Technician.findByPk(techId);
+        // Get doctor details
+        const doctor = await Doctor.findByPk(eventCheck.doctorId);
         
-        const existingConflict = conflicts.find(c => c.technicianId === techId);
-        const conflictEventData = conflictingEvents.map(event => ({
-          id: event.id,
-          name: event.name,
-          startTime: event.startTime,
-          endTime: event.endTime,
-          jobNumber: event.jobNumber
-        }));
-
-        if (existingConflict) {
-          existingConflict.conflictingEvents.push(...conflictEventData);
-        } else {
-          conflicts.push({
-            technicianId: techId,
-            technicianName: technician.name,
-            conflictingEvents: conflictEventData
-          });
-        }
+        doctorConflicts.push({
+          doctorId: eventCheck.doctorId,
+          doctorName: doctor.name,
+          conflictingEvents: conflictingEvents.map(event => ({
+            id: event.id,
+            name: event.name,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            jobNumber: event.jobNumber
+          }))
+        });
       }
     }
   }
 
+  const hasConflicts = technicianConflicts.length > 0 || doctorConflicts.length > 0;
+  
   return {
-    hasConflicts: conflicts.length > 0,
-    conflicts
+    hasConflicts,
+    technicianConflicts,
+    doctorConflicts
   };
 }
 
@@ -297,40 +432,42 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     const { force = 'false' } = req.query;
     const isForceCreate = force === 'true';
-    const { name, startTime, endTime, Technicians, isRecurring, recurrencePattern, ...otherEventData } = req.body;
+    const { name, startTime, endTime, Technicians, DoctorId, isRecurring, recurrencePattern, ...otherEventData } = req.body;
 
     if (!name || !startTime || !endTime) {
       return res.status(400).json({ error: 'Name, start time, and end time are required fields' });
     }
 
-    // Check for technician conflicts before creating
-    if (!isForceCreate && Technicians && Technicians.length > 0) {
-      const technicianIds = Technicians.map(tech => tech.id);
+    // Check for conflicts before creating
+    if (!isForceCreate && ((Technicians && Technicians.length > 0) || DoctorId)) {
+      const technicianIds = Technicians ? Technicians.map(tech => tech.id) : [];
       
       const conflictCheck = await checkNewEventConflicts(
         startTime,
         endTime,
         technicianIds,
+        DoctorId,
         isRecurring ? recurrencePattern : null,
         req.body.allDay
       );
       
       if (conflictCheck.hasConflicts) {
         return res.status(409).json({
-          error: 'Technician scheduling conflicts detected',
+          error: 'Scheduling conflicts detected',
           ...conflictCheck
         });
       }
     }
 
     // Log force creates for audit purposes
-    if (isForceCreate && Technicians && Technicians.length > 0) {
+    if (isForceCreate && ((Technicians && Technicians.length > 0) || DoctorId)) {
       console.log(`[AUDIT] Force create applied for new event by user ${req.user?.id || 'unknown'}`, {
         eventName: name,
         startTime,
         endTime,
         isRecurring,
-        technicians: Technicians.map(t => ({ id: t.id, name: t.name })),
+        technicians: Technicians ? Technicians.map(t => ({ id: t.id, name: t.name })) : [],
+        doctorId: DoctorId,
         timestamp: new Date().toISOString(),
         userId: req.user?.id
       });
@@ -343,6 +480,7 @@ router.post('/', authMiddleware, async (req, res) => {
         name,
         startTime,
         endTime,
+        DoctorId,
         isRecurring,
         recurrencePattern: isRecurring ? recurrencePattern : null,
         ...otherEventData
@@ -506,35 +644,56 @@ router.put('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check for technician conflicts before making any changes
-    if (!isForceUpdate && req.body.Technicians) {
-      const technicianIds = req.body.Technicians.map(tech => tech.id);
+    // Check for conflicts before making any changes
+    if (!isForceUpdate && (req.body.Technicians || req.body.DoctorId)) {
+      const technicianIds = req.body.Technicians ? req.body.Technicians.map(tech => tech.id) : null;
+      const doctorId = req.body.DoctorId || null;
       const newStartTime = req.body.startTime || event.startTime;
       const newEndTime = req.body.endTime || event.endTime;
       
-      const conflictCheck = await checkTechnicianConflicts(
-        event, 
-        technicianIds, 
-        newStartTime, 
-        newEndTime, 
-        updateType
-      );
+      let technicianConflictCheck = { hasConflicts: false, conflicts: [] };
+      let doctorConflictCheck = { hasConflicts: false, conflicts: [] };
+
+      // Check technician conflicts if technicians are being updated
+      if (technicianIds) {
+        technicianConflictCheck = await checkTechnicianConflicts(
+          event, 
+          technicianIds, 
+          newStartTime, 
+          newEndTime, 
+          updateType
+        );
+      }
+
+      // Check doctor conflicts if doctor is being updated
+      if (doctorId) {
+        doctorConflictCheck = await checkDoctorConflicts(
+          event, 
+          doctorId, 
+          newStartTime, 
+          newEndTime, 
+          updateType
+        );
+      }
       
-      if (conflictCheck.hasConflicts) {
+      if (technicianConflictCheck.hasConflicts || doctorConflictCheck.hasConflicts) {
         return res.status(409).json({
-          error: 'Technician scheduling conflicts detected',
-          ...conflictCheck
+          error: 'Scheduling conflicts detected',
+          hasConflicts: true,
+          technicianConflicts: technicianConflictCheck.conflicts,
+          doctorConflicts: doctorConflictCheck.conflicts
         });
       }
     }
 
     // Log force updates for audit purposes
-    if (isForceUpdate && req.body.Technicians) {
+    if (isForceUpdate && (req.body.Technicians || req.body.DoctorId)) {
       console.log(`[AUDIT] Force update applied for event ${event.id} by user ${req.user?.id || 'unknown'}`, {
         eventId: event.id,
         eventName: event.name,
         updateType,
-        newTechnicians: req.body.Technicians.map(t => ({ id: t.id, name: t.name })),
+        newTechnicians: req.body.Technicians ? req.body.Technicians.map(t => ({ id: t.id, name: t.name })) : [],
+        newDoctorId: req.body.DoctorId,
         timestamp: new Date().toISOString(),
         userId: req.user?.id
       });

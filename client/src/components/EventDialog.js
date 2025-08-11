@@ -255,50 +255,107 @@ function EventDialog({
     return moment(dateTime).format('MMM D, YYYY h:mm A');
   };
 
-  const ConflictDisplay = ({ conflicts }) => (
+  const TechnicianConflictDisplay = ({ conflicts }) => (
     <Box sx={{ mb: 2 }}>
-      <Alert severity="warning" sx={{ mb: 2 }}>
-        <AlertTitle>⚠️ Scheduling Conflicts Detected</AlertTitle>
-        <Typography variant="body2" sx={{ mb: 2 }}>
-          The following technicians are already scheduled during this time:
-        </Typography>
-        
-        {conflicts.map((conflict, index) => (
-          <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: '#fff7ed' }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#7c2d12', mb: 1 }}>
-              {conflict.technicianName}
-            </Typography>
-            {conflict.conflictingEvents.map((conflictEvent, eventIndex) => (
-              <Box key={eventIndex} sx={{ ml: 2, mb: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                  {conflictEvent.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Job: {conflictEvent.jobNumber}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {formatDateTime(conflictEvent.startTime)} - {formatDateTime(conflictEvent.endTime)}
-                </Typography>
-              </Box>
-            ))}
-          </Paper>
-        ))}
-        
-        <Paper sx={{ p: 2, bgcolor: '#fffbeb' }}>
-          <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-            Options:
+      <Typography variant="h6" sx={{ color: '#7c2d12', mb: 1, fontWeight: 'bold' }}>
+        👥 Technician Conflicts
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+        The following technicians are already scheduled during this time:
+      </Typography>
+      
+      {conflicts.map((conflict, index) => (
+        <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: '#fff7ed', border: '1px solid #fed7aa' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#7c2d12', mb: 1 }}>
+            {conflict.technicianName}
           </Typography>
-          <Typography variant="body2" component="div">
-            <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              <li>Modify the event time or remove conflicting technicians</li>
-              <li>Use "Force Save" to override conflicts</li>
-              <li>Cancel to review and adjust manually</li>
-            </ul>
-          </Typography>
+          {conflict.conflictingEvents.map((conflictEvent, eventIndex) => (
+            <Box key={eventIndex} sx={{ ml: 2, mb: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                {conflictEvent.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Job: {conflictEvent.jobNumber}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {formatDateTime(conflictEvent.startTime)} - {formatDateTime(conflictEvent.endTime)}
+              </Typography>
+            </Box>
+          ))}
         </Paper>
-      </Alert>
+      ))}
     </Box>
   );
+
+  const DoctorConflictDisplay = ({ conflicts }) => (
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="h6" sx={{ color: '#7c2d12', mb: 1, fontWeight: 'bold' }}>
+        🩺 Doctor Conflicts
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+        The following doctor is already scheduled during this time:
+      </Typography>
+      
+      {conflicts.map((conflict, index) => (
+        <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: '#fef3f2', border: '1px solid #fecaca' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#7c2d12', mb: 1 }}>
+            {conflict.doctorName}
+          </Typography>
+          {conflict.conflictingEvents.map((conflictEvent, eventIndex) => (
+            <Box key={eventIndex} sx={{ ml: 2, mb: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                {conflictEvent.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Job: {conflictEvent.jobNumber}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {formatDateTime(conflictEvent.startTime)} - {formatDateTime(conflictEvent.endTime)}
+              </Typography>
+            </Box>
+          ))}
+        </Paper>
+      ))}
+    </Box>
+  );
+
+  const ConflictDisplay = ({ conflictError }) => {
+    const hasTechnicianConflicts = conflictError.technicianConflicts && conflictError.technicianConflicts.length > 0;
+    const hasDoctorConflicts = conflictError.doctorConflicts && conflictError.doctorConflicts.length > 0;
+    
+    return (
+      <Box sx={{ mb: 2 }}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <AlertTitle>⚠️ Scheduling Conflicts Detected</AlertTitle>
+          
+          {hasTechnicianConflicts && (
+            <TechnicianConflictDisplay conflicts={conflictError.technicianConflicts} />
+          )}
+          
+          {hasDoctorConflicts && (
+            <DoctorConflictDisplay conflicts={conflictError.doctorConflicts} />
+          )}
+          
+          {hasTechnicianConflicts && hasDoctorConflicts && (
+            <Divider sx={{ my: 2 }} />
+          )}
+          
+          <Paper sx={{ p: 2, bgcolor: '#fffbeb' }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              Options:
+            </Typography>
+            <Typography variant="body2" component="div">
+              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                <li>Modify the event time or remove conflicting staff</li>
+                <li>Use "Force Save" to override conflicts</li>
+                <li>Cancel to review and adjust manually</li>
+              </ul>
+            </Typography>
+          </Paper>
+        </Alert>
+      </Box>
+    );
+  };
 
   return (
     <>
@@ -308,7 +365,7 @@ function EventDialog({
         <DialogContent>
           {/* Show conflicts if they exist */}
           {conflictError && showConflicts && (
-            <ConflictDisplay conflicts={conflictError.conflicts} />
+            <ConflictDisplay conflictError={conflictError} />
           )}
 
           <TextField
