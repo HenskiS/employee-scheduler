@@ -16,6 +16,8 @@ server/database.sqlite
 *.sqlite
 *.sql
 
+.dropbox_tokens.json
+
 client/oldBuild/
 config/Client List with Schedulers 03112025.xlsx
 

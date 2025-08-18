@@ -9,8 +9,8 @@ const { router: userRoutes} = require('./routes/users');
 const { router: eventRoutes} = require('./routes/events');
 const { router: scheduleRoutes} = require('./routes/schedules');
 const { router: backupRoutes} = require('./routes/backup');
-const refreshRoutes = require('./routes/refresh')
-const loggingMiddleware = require('./middleware/logging')
+const refreshRoutes = require('./routes/refresh');
+const loggingMiddleware = require('./middleware/logging');
 
 require('./models');
 

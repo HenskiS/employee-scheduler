@@ -10,7 +10,6 @@ async function runBackup() {
 
   console.log(`🕐 Starting backup script - Action: ${action}`);
   console.log(`📅 ${new Date().toLocaleString()}`);
-  console.log(`☁️  Dropbox: ${process.env.DROPBOX_ACCESS_TOKEN ? 'Enabled' : 'Disabled'}`);
 
   try {
     await backupService.init();

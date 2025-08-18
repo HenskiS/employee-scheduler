@@ -271,7 +271,7 @@ function BackupDialog({ open, onClose }) {
                 </Tooltip>
               )}
               
-              {backup.location === 'dropbox' && (
+              {/*backup.location === 'dropbox' && (
                 <Tooltip title="Download from Dropbox">
                   <IconButton
                     onClick={() => downloadFromCloud(backup.path, backup.filename)}
@@ -282,7 +282,7 @@ function BackupDialog({ open, onClose }) {
                     <CloudDownloadIcon />
                   </IconButton>
                 </Tooltip>
-              )}
+              )*/}
               
               <Tooltip title={`Restore from ${backup.location === 'dropbox' ? 'cloud' : 'local'}`}>
                 <IconButton
@@ -336,7 +336,7 @@ function BackupDialog({ open, onClose }) {
         {status && !status.dropboxEnabled && (
           <Alert severity="info" sx={{ mb: 2 }}>
             <Typography variant="body2">
-              Cloud backup is disabled. Add DROPBOX_ACCESS_TOKEN to enable automatic cloud backups.
+              Cloud backup is disabled.
             </Typography>
           </Alert>
         )}
