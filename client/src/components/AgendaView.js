@@ -83,7 +83,8 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
                   {event.allDay ? (
                     <span>All Day</span>
                   ) : (
-                    moment(event.start).format('h:mm a')
+                    `${moment(event.start).format('h:mm a')} -
+                    ${moment(event.end).format('h:mm a')}`
                   )}
                 </td>
                 <td className="agenda-event">
