@@ -11,7 +11,7 @@ module.exports = {
   // Add PostgreSQL development config for testing migration
   development: {
     username: 'postgres',
-    password: process.env.DB_PASSWORD,
+    password: `${process.env.DB_PASSWORD}`,
     database: 'scheduling_app_dev',
     host: 'localhost',
     port: 5432,

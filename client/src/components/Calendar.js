@@ -156,17 +156,34 @@ const MyCalendar = () => {
   const processEvents = () => {
     return events.flatMap(event => {
       if (view === "jobs") {
-        return [{
+        // Create an event instance for each job number assigned to the event
+        const jobNumbers = event.jobNumbers || [];
+        if (jobNumbers.length === 0) {
+          // If no job numbers, still show the event but without a resource
+          return [{
+            id: event.id,
+            title: event.name,
+            start: new Date(event.startTime),
+            end: new Date(event.endTime),
+            description: event.description,
+            resourceId: null,
+            allDay: event.allDay,
+            label: event.label,
+            Doctor: event.Doctor
+          }];
+        }
+        
+        return jobNumbers.map(jobNumber => ({
           id: event.id,
           title: event.name,
           start: new Date(event.startTime),
           end: new Date(event.endTime),
           description: event.description,
-          resourceId: event.jobNumber,
+          resourceId: jobNumber,
           allDay: event.allDay,
           label: event.label,
           Doctor: event.Doctor
-        }];
+        }));
       } else {
         // Create an event instance for each technician assigned to the event
         return (event.Technicians || []).map(technician => ({

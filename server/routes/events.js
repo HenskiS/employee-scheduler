@@ -38,7 +38,7 @@ const createRecurringEvents = async (originalEvent, rule, transaction) => {
       endTime: instanceEnd,
       allDay: originalEvent.allDay,
       label: originalEvent.label,
-      jobNumber: originalEvent.jobNumber,
+      jobNumbers: originalEvent.jobNumbers,
       isRecurring: true,
       originalEventId: originalEvent.originalEventId || originalEvent.id,
       DoctorId: originalEvent.DoctorId,
@@ -147,7 +147,7 @@ async function checkTechnicianConflicts(eventToUpdate, newTechnicianIds, newStar
             name: event.name,
             startTime: event.startTime,
             endTime: event.endTime,
-            jobNumber: event.jobNumber
+            jobNumbers: event.jobNumbers
           })));
         } else {
           conflicts.push({
@@ -158,7 +158,7 @@ async function checkTechnicianConflicts(eventToUpdate, newTechnicianIds, newStar
               name: event.name,
               startTime: event.startTime,
               endTime: event.endTime,
-              jobNumber: event.jobNumber
+              jobNumbers: event.jobNumbers
             }))
           });
         }
@@ -251,7 +251,7 @@ async function checkDoctorConflicts(eventToUpdate, newDoctorId, newStartTime, ne
           name: event.name,
           startTime: event.startTime,
           endTime: event.endTime,
-          jobNumber: event.jobNumber
+          jobNumbers: event.jobNumbers
         }))
       });
     }
@@ -336,7 +336,7 @@ async function checkNewEventConflicts(startTime, endTime, technicianIds, doctorI
             name: event.name,
             startTime: event.startTime,
             endTime: event.endTime,
-            jobNumber: event.jobNumber
+            jobNumbers: event.jobNumbers
           }));
 
           if (existingConflict) {
@@ -386,7 +386,7 @@ async function checkNewEventConflicts(startTime, endTime, technicianIds, doctorI
             name: event.name,
             startTime: event.startTime,
             endTime: event.endTime,
-            jobNumber: event.jobNumber
+            jobNumbers: event.jobNumbers
           }))
         });
       }

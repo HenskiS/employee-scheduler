@@ -27,6 +27,11 @@ const Event = sequelize.define('Event', {
   jobNumber: {
     type: DataTypes.STRING
   },
+  jobNumbers: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    allowNull: true,
+    defaultValue: []
+  },
   isRecurring: {
     type: DataTypes.BOOLEAN,
     defaultValue: false

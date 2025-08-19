@@ -17,6 +17,7 @@ import {
   Typography,
   Paper,
   Divider,
+  Chip,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -46,7 +47,7 @@ function EventDialog({
     endTime: moment().add(4, 'hour'),
     allDay: false,
     label: 'none',
-    jobNumber: '',
+    jobNumbers: [],
     isRecurring: false,
     recurrencePattern: null,
     Technicians: [],
@@ -57,7 +58,7 @@ function EventDialog({
     name: '',
     startTime: '',
     endTime: '',
-    jobNumber: ''
+    jobNumbers: ''
   });
   const [showRecurringChoice, setShowRecurringChoice] = useState(false);
   const [recurringAction, setRecurringAction] = useState(null);
@@ -73,6 +74,7 @@ function EventDialog({
           startTime: moment(event.startTime),
           endTime: moment(event.endTime),
           label: event.label ?? 'None',
+          jobNumbers: event.jobNumbers || [],
           Technicians: [{ id: 'all', name: 'All Technicians', isAllOption: true }]
         });
       } else {
@@ -81,7 +83,8 @@ function EventDialog({
           ...event,
           startTime: moment(event.startTime),
           endTime: moment(event.endTime),
-          label: event.label ?? 'None'
+          label: event.label ?? 'None',
+          jobNumbers: event.jobNumbers || []
         });
       }
       
@@ -90,14 +93,16 @@ function EventDialog({
         name: '',
         startTime: '',
         endTime: '',
-        jobNumber: ''
+        jobNumbers: ''
       });
     } else if (newEvent) {
+      // For new events, if resourceId is provided, add it to jobNumbers
+      const initialJobNumbers = newEvent.resourceId ? [newEvent.resourceId] : [];
       setFormData({
         ...formData,
         startTime: moment(newEvent.start),
         endTime: moment(newEvent.end),
-        jobNumber: newEvent.resourceId,
+        jobNumbers: initialJobNumbers,
         allDay: newEvent.allDay,
       });
     }
@@ -115,7 +120,7 @@ function EventDialog({
       name: '',
       startTime: '',
       endTime: '',
-      jobNumber: ''
+      jobNumbers: ''
     };
     let isValid = true;
 
@@ -125,9 +130,9 @@ function EventDialog({
       isValid = false;
     }
 
-    // Validate job number
-    if (!formData.jobNumber || !formData.jobNumber.trim()) {
-      newErrors.jobNumber = 'Job number is required';
+    // Validate job numbers
+    if (!formData.jobNumbers || formData.jobNumbers.length === 0) {
+      newErrors.jobNumbers = 'At least one job number is required';
       isValid = false;
     }
 
@@ -175,6 +180,14 @@ function EventDialog({
   const handleCheckboxChange = (e) => {
     const { name, checked } = e.target;
     setFormData({ ...formData, [name]: checked });
+  };
+
+  const handleJobNumbersChange = (event, newValue) => {
+    setFormData({ ...formData, jobNumbers: newValue });
+    // Clear error when job numbers are changed
+    if (errors.jobNumbers) {
+      setErrors({ ...errors, jobNumbers: '' });
+    }
   };
 
   const handleSubmit = (force = false) => {
@@ -275,7 +288,9 @@ function EventDialog({
                 {conflictEvent.name}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Job: {conflictEvent.jobNumber}
+                Jobs: {Array.isArray(conflictEvent.jobNumbers) 
+                  ? conflictEvent.jobNumbers.join(', ') 
+                  : (conflictEvent.jobNumber || 'N/A')}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {formatDateTime(conflictEvent.startTime)} - {formatDateTime(conflictEvent.endTime)}
@@ -307,7 +322,9 @@ function EventDialog({
                 {conflictEvent.name}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Job: {conflictEvent.jobNumber}
+                Jobs: {Array.isArray(conflictEvent.jobNumbers) 
+                  ? conflictEvent.jobNumbers.join(', ') 
+                  : (conflictEvent.jobNumber || 'N/A')}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {formatDateTime(conflictEvent.startTime)} - {formatDateTime(conflictEvent.endTime)}
@@ -499,25 +516,39 @@ function EventDialog({
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            select
-            margin="dense"
-            name="jobNumber"
-            label="Job"
-            fullWidth
-            value={formData.jobNumber}
-            onChange={handleInputChange}
-            error={!!errors.jobNumber}
-          >
-            {throughThirty.map((num) => (
-              <MenuItem key={num} value={num}>
-                {num}
-              </MenuItem>
-            ))}
-          </TextField>
-          {errors.jobNumber && (
-            <FormHelperText error>{errors.jobNumber}</FormHelperText>
-          )}
+          
+          {/* Replace single job number dropdown with multi-select */}
+          <Autocomplete
+            multiple
+            options={throughThirty}
+            value={formData.jobNumbers || []}
+            onChange={handleJobNumbersChange}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => {
+                const { key, ...tagProps } = getTagProps({ index });
+                return (
+                  <Chip 
+                    key={key}
+                    variant="outlined" 
+                    label={option} 
+                    {...tagProps} 
+                  />
+                );
+              })
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                margin="dense"
+                label="Job Numbers"
+                placeholder="Select job numbers"
+                error={!!errors.jobNumbers}
+                helperText={errors.jobNumbers}
+                required
+              />
+            )}
+            sx={{ mt: 1, mb: 1 }}
+          />
         </DialogContent>
         <DialogActions>
           {event && (
