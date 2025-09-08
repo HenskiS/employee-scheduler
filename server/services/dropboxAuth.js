@@ -10,17 +10,19 @@ class DropboxAuth {
     this.clientSecret = process.env.DROPBOX_APP_SECRET;
     this.dropbox = null;
     this.initialized = false;
+    this.isRefreshing = false; // Prevent multiple concurrent refresh attempts
     
-    // Debug environment variables
-    console.log('🔧 Dropbox Auth Config:');
-    console.log(`   App Key: ${this.clientId ? '✅ Set' : '❌ Missing'}`);
-    console.log(`   App Secret: ${this.clientSecret ? '✅ Set' : '❌ Missing'}`);
-    console.log(`   Token File: ${this.tokenFile}`);
+    // Debug environment variables - but only log once
+    if (!this._configLogged) {
+      console.log('🔧 Dropbox Auth Config:');
+      console.log(`   App Key: ${this.clientId ? '✅ Set' : '❌ Missing'}`);
+      console.log(`   App Secret: ${this.clientSecret ? '✅ Set' : '❌ Missing'}`);
+      console.log(`   Token File: ${this.tokenFile}`);
+      this._configLogged = true;
+    }
     
-    // Auto-initialize
-    this.init().catch(error => {
-      console.warn('⚠️ Auto-initialization failed:', error.message);
-    });
+    // REMOVED: Auto-initialization that was causing loops
+    // Don't auto-initialize in constructor - let it be called explicitly when needed
   }
 
   async init() {
@@ -28,7 +30,14 @@ class DropboxAuth {
       return this.dropbox;
     }
     
+    // Prevent multiple simultaneous initialization attempts
+    if (this.isRefreshing) {
+      console.log('⏳ Dropbox initialization already in progress...');
+      return null;
+    }
+    
     try {
+      this.isRefreshing = true;
       console.log('🔍 Loading Dropbox tokens...');
       const tokens = await this.loadTokens();
       
@@ -55,62 +64,70 @@ class DropboxAuth {
               this.initialized = true;
               return result;
             } else {
-              console.warn('⚠️ No refresh token available');
+              console.warn('⚠️ No refresh token available - need re-authorization');
+              this.initialized = true; // Mark as initialized even if failed
               return null;
             }
           }
           console.error('❌ Dropbox test failed:', error.message);
-          throw error;
+          this.initialized = true; // Mark as initialized even if failed
+          return null;
         }
       } else {
-        console.warn('⚠️ No Dropbox tokens found. Need to authorize app.');
+        console.log('ℹ️ No Dropbox tokens found. Need to authorize app.');
         this.initialized = true;
         return null;
       }
     } catch (error) {
       console.error('❌ Dropbox auth initialization failed:', error.message);
-      this.initialized = true;
+      this.initialized = true; // Always mark as initialized to prevent loops
       return null;
+    } finally {
+      this.isRefreshing = false;
     }
   }
 
   async loadTokens() {
     try {
-      console.log(`🔍 Looking for token file at: ${this.tokenFile}`);
       const data = await fs.readFile(this.tokenFile, 'utf8');
       const tokens = JSON.parse(data);
-      console.log('✅ Token file loaded successfully');
-      console.log(`📅 Tokens last updated: ${tokens.updated_at}`);
-      console.log(`⏰ Tokens expire at: ${new Date(tokens.expires_at).toISOString()}`);
       
-      // Check if tokens are expired
-      if (tokens.expires_at && Date.now() > tokens.expires_at) {
-        console.log('⚠️ Access token has expired');
-      } else {
-        console.log('✅ Access token is still valid');
+      // Check if tokens are expired (with some buffer)
+      const now = Date.now();
+      const expiryBuffer = 5 * 60 * 1000; // 5 minute buffer
+      
+      if (tokens.expires_at && (now + expiryBuffer) > tokens.expires_at) {
+        console.log('⚠️ Access token will expire soon or has expired');
       }
       
       return tokens;
     } catch (error) {
       if (error.code === 'ENOENT') {
-        console.log('❌ Token file does not exist');
         return null; // File doesn't exist
       }
-      console.error('❌ Error loading token file:', error.message);
       throw error;
     }
   }
 
   async saveTokens(tokens) {
-    const tokenData = {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_at: Date.now() + (tokens.expires_in * 1000), // Convert to timestamp
-      updated_at: new Date().toISOString()
-    };
+    try {
+      // Ensure config directory exists
+      const configDir = path.dirname(this.tokenFile);
+      await fs.mkdir(configDir, { recursive: true });
+      
+      const tokenData = {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_at: Date.now() + (tokens.expires_in * 1000), // Convert to timestamp
+        updated_at: new Date().toISOString()
+      };
 
-    await fs.writeFile(this.tokenFile, JSON.stringify(tokenData, null, 2));
-    console.log('💾 Dropbox tokens saved');
+      await fs.writeFile(this.tokenFile, JSON.stringify(tokenData, null, 2));
+      console.log('💾 Dropbox tokens saved');
+    } catch (error) {
+      console.error('❌ Failed to save tokens:', error.message);
+      throw error;
+    }
   }
 
   async refreshAccessToken(refreshToken) {
@@ -118,7 +135,16 @@ class DropboxAuth {
       throw new Error('No refresh token available. Need to re-authorize app.');
     }
 
+    // Prevent multiple concurrent refresh attempts
+    if (this.isRefreshing) {
+      console.log('⏳ Token refresh already in progress...');
+      return null;
+    }
+
     try {
+      this.isRefreshing = true;
+      console.log('🔄 Refreshing Dropbox access token...');
+      
       const response = await fetch('https://api.dropbox.com/oauth2/token', {
         method: 'POST',
         headers: {
@@ -133,31 +159,36 @@ class DropboxAuth {
       });
 
       if (!response.ok) {
-        throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Token refresh failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      const tokens = await response.json();
+      const newTokens = await response.json();
       
       // Save new tokens
       await this.saveTokens({
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || refreshToken, // Some providers don't return new refresh token
-        expires_in: tokens.expires_in
+        access_token: newTokens.access_token,
+        refresh_token: newTokens.refresh_token || refreshToken, // Keep old refresh token if new one not provided
+        expires_in: newTokens.expires_in
       });
 
       // Create new Dropbox client with fresh token
       this.dropbox = new Dropbox({ 
-        accessToken: tokens.access_token,
+        accessToken: newTokens.access_token,
         clientId: this.clientId,
         clientSecret: this.clientSecret
       });
 
-      console.log('✅ Dropbox access token refreshed');
+      console.log('✅ Dropbox access token refreshed successfully');
       return this.dropbox;
 
     } catch (error) {
       console.error('❌ Token refresh failed:', error.message);
+      // Clear the client so we don't keep using invalid tokens
+      this.dropbox = null;
       throw error;
+    } finally {
+      this.isRefreshing = false;
     }
   }
 
@@ -192,7 +223,8 @@ class DropboxAuth {
       });
 
       if (!response.ok) {
-        throw new Error(`Authorization failed: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Authorization failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const tokens = await response.json();
@@ -215,6 +247,13 @@ class DropboxAuth {
 
   getDropboxClient() {
     return this.dropbox;
+  }
+
+  // Reset the auth state (useful for debugging)
+  reset() {
+    this.dropbox = null;
+    this.initialized = false;
+    this.isRefreshing = false;
   }
 }
 

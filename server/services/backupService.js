@@ -22,10 +22,11 @@ class BackupService {
     
     this.dropbox = null;
     this.dropboxPath = '/backups/daily';
+    this.dropboxEnabled = false;
   }
 
   async init() {
-    // Create backup directories
+    // Create backup directories first - this should always work
     const dirs = ['hourly', 'daily', 'weekly', 'manual'].map(type => 
       path.join(this.backupDir, type)
     );
@@ -33,20 +34,27 @@ class BackupService {
     for (const dir of dirs) {
       await fs.mkdir(dir, { recursive: true });
     }
+    console.log('✅ Local backup directories created');
 
-    // Initialize Dropbox with proper auth handling
+    // Try to initialize Dropbox, but don't let it fail the entire init
     try {
+      console.log('🔧 Attempting Dropbox initialization...');
       this.dropbox = await dropboxAuth.init();
       if (this.dropbox) {
         await this.ensureDropboxFolder();
         console.log('✅ Dropbox connection verified');
+        this.dropboxEnabled = true;
       } else {
-        console.log('ℹ️ Dropbox requires authorization. Visit /setup/dropbox to authorize.');
+        console.log('ℹ️ Dropbox not configured or requires authorization. Visit /setup/dropbox to authorize.');
+        this.dropboxEnabled = false;
       }
     } catch (error) {
       console.warn('⚠️ Dropbox connection failed:', error.message);
       this.dropbox = null;
+      this.dropboxEnabled = false;
     }
+    
+    console.log('✅ Backup service initialized');
   }
 
   async createBackup(type = 'hourly') {
@@ -64,17 +72,18 @@ class BackupService {
     const command = `pg_dump -h ${config.host} -p ${config.port} -U ${config.username} -d ${config.database} --no-password --clean --if-exists`;
 
     try {
+      console.log(`🔄 Creating ${type} backup: ${filename}`);
       const { stdout } = await execAsync(command, { env });
       await fs.writeFile(backupPath, stdout);
       
       console.log(`✅ Backup created: ${filename}`);
       
-      // Upload daily backups to Dropbox
-      if (type === 'daily' && this.dropbox) {
+      // Try to upload daily backups to Dropbox, but don't fail if it doesn't work
+      if (type === 'daily' && this.dropboxEnabled && this.dropbox) {
         try {
           await this.uploadToDropbox(backupPath, filename);
         } catch (error) {
-          console.warn('⚠️ Dropbox upload failed:', error.message);
+          console.warn('⚠️ Dropbox upload failed, but local backup succeeded:', error.message);
           // Don't fail the whole backup if cloud upload fails
         }
       }
@@ -86,11 +95,22 @@ class BackupService {
     }
   }
 
-  async uploadToDropbox(localPath, filename, retries = 3) {
-    await this.ensureDropboxClient();
-    
-    if (!this.dropbox) {
+  async uploadToDropbox(localPath, filename, retries = 2) {
+    if (!this.dropboxEnabled) {
       throw new Error('Dropbox not configured. Visit /setup/dropbox to authorize.');
+    }
+
+    // Try to ensure we have a working client
+    if (!this.dropbox) {
+      try {
+        this.dropbox = await dropboxAuth.init();
+        if (!this.dropbox) {
+          throw new Error('Could not initialize Dropbox client');
+        }
+      } catch (error) {
+        this.dropboxEnabled = false;
+        throw error;
+      }
     }
 
     const remotePath = `${this.dropboxPath}/${filename}`;
@@ -110,24 +130,30 @@ class BackupService {
         return { success: true, remotePath };
         
       } catch (error) {
-        // If token expired, try to refresh
+        console.warn(`⚠️ Dropbox upload attempt ${attempt}/${retries} failed:`, error.message);
+        
+        // Don't try to refresh on every attempt, and limit refresh attempts
         if (error.status === 401 && attempt === 1) {
-          console.log('🔄 Token expired during upload, refreshing...');
+          console.log('🔄 Token expired during upload, attempting refresh...');
           try {
             this.dropbox = await dropboxAuth.init();
+            if (!this.dropbox) {
+              this.dropboxEnabled = false;
+              throw new Error('Could not refresh Dropbox token');
+            }
             continue; // Retry with new token
           } catch (refreshError) {
             console.error('❌ Token refresh failed:', refreshError.message);
+            this.dropboxEnabled = false;
+            throw refreshError;
           }
         }
-        
-        console.warn(`⚠️ Dropbox upload attempt ${attempt}/${retries} failed:`, error.message);
         
         if (attempt === retries) {
           throw error;
         }
         
-        // Wait before retry (exponential backoff)
+        // Wait before retry
         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
     }
@@ -142,7 +168,8 @@ class BackupService {
       cloud: []
     };
     
-    // List local backups
+    // Always list local backups first
+    console.log('📁 Listing local backups...');
     for (const type of ['hourly', 'daily', 'weekly', 'manual']) {
       const dir = path.join(this.backupDir, type);
       
@@ -167,17 +194,19 @@ class BackupService {
         // Sort by creation time (newest first)
         backups[type].sort((a, b) => b.created - a.created);
       } catch (error) {
-        console.warn(`Warning: Could not read ${type} backup directory`);
+        console.warn(`Warning: Could not read ${type} backup directory:`, error.message);
       }
     }
     
-    // List cloud backups
-    if (this.dropbox) {
+    // Try to list cloud backups, but don't fail if it doesn't work
+    if (this.dropboxEnabled && this.dropbox) {
       try {
+        console.log('☁️ Listing cloud backups...');
         const cloudBackups = await this.listDropboxBackups();
         backups.cloud = cloudBackups;
       } catch (error) {
         console.warn('Warning: Could not list Dropbox backups:', error.message);
+        // Don't disable dropbox just because listing failed once
       }
     }
     
@@ -185,8 +214,6 @@ class BackupService {
   }
 
   async listDropboxBackups() {
-    await this.ensureDropboxClient();
-    
     if (!this.dropbox) {
       return [];
     }
@@ -209,22 +236,13 @@ class BackupService {
 
       return backups;
     } catch (error) {
-      if (error.status === 401) {
-        console.log('🔄 Token expired, refreshing...');
-        try {
-          this.dropbox = await dropboxAuth.init();
-          // Retry the operation
-          return await this.listDropboxBackups();
-        } catch (refreshError) {
-          console.error('❌ Token refresh failed:', refreshError.message);
-          return [];
-        }
-      }
-      
       if (error.status === 409) {
         return []; // Folder doesn't exist
       }
-      throw error;
+      
+      // Don't try to refresh on every list operation
+      console.warn('Dropbox list failed:', error.message);
+      return [];
     }
   }
 
@@ -240,16 +258,6 @@ class BackupService {
       console.log(`📥 Downloaded from Dropbox: ${path.basename(remotePath)}`);
       return { success: true, localPath };
     } catch (error) {
-      if (error.status === 401) {
-        console.log('🔄 Token expired during download, refreshing...');
-        try {
-          this.dropbox = await dropboxAuth.init();
-          // Retry the operation
-          return await this.downloadFromDropbox(remotePath, localPath);
-        } catch (refreshError) {
-          console.error('❌ Token refresh failed:', refreshError.message);
-        }
-      }
       console.error('❌ Dropbox download failed:', error.message);
       throw error;
     }
@@ -297,7 +305,8 @@ class BackupService {
   }
 
   async cleanupBackups() {
-    // Clean up local backups
+    // Clean up local backups first
+    console.log('🧹 Cleaning up local backups...');
     for (const [type, maxCount] of Object.entries(this.retentionPolicy)) {
       if (type === 'cloud') continue; // Handle cloud separately
       
@@ -333,9 +342,10 @@ class BackupService {
       }
     }
 
-    // Clean up Dropbox backups
-    if (this.dropbox) {
+    // Clean up Dropbox backups if enabled
+    if (this.dropboxEnabled && this.dropbox) {
       try {
+        console.log('☁️🧹 Cleaning up cloud backups...');
         await this.cleanupDropboxBackups();
       } catch (error) {
         console.warn('Warning: Could not cleanup Dropbox backups:', error.message);
@@ -360,19 +370,7 @@ class BackupService {
           await this.dropbox.filesDeleteV2({ path: file.path });
           console.log(`☁️🗑️ Deleted old Dropbox backup: ${file.filename}`);
         } catch (error) {
-          if (error.status === 401) {
-            console.log('🔄 Token expired during cleanup, refreshing...');
-            try {
-              this.dropbox = await dropboxAuth.init();
-              // Retry the operation
-              await this.dropbox.filesDeleteV2({ path: file.path });
-              console.log(`☁️🗑️ Deleted old Dropbox backup: ${file.filename}`);
-            } catch (refreshError) {
-              console.warn(`Warning: Could not delete ${file.filename}:`, refreshError.message);
-            }
-          } else {
-            console.warn(`Warning: Could not delete ${file.filename}:`, error.message);
-          }
+          console.warn(`Warning: Could not delete ${file.filename}:`, error.message);
         }
       }
     } catch (error) {
@@ -386,25 +384,11 @@ class BackupService {
     try {
       await this.dropbox.filesGetMetadata({ path: this.dropboxPath });
     } catch (error) {
-      if (error.status === 401) {
-        console.log('🔄 Token expired during folder check, refreshing...');
-        try {
-          this.dropbox = await dropboxAuth.init();
-          // Retry the operation
-          await this.dropbox.filesGetMetadata({ path: this.dropboxPath });
-        } catch (refreshError) {
-          if (refreshError.status === 409) {
-            // Folder doesn't exist, create it
-            await this.createDropboxFolder();
-          } else {
-            throw refreshError;
-          }
-        }
-      } else if (error.status === 409) {
+      if (error.status === 409) {
         // Folder doesn't exist, create it
         await this.createDropboxFolder();
       } else {
-        throw error;
+        console.warn('Could not check Dropbox folder:', error.message);
       }
     }
   }
@@ -416,19 +400,7 @@ class BackupService {
       await this.dropbox.filesCreateFolderV2({ path: this.dropboxPath });
       console.log(`📁 Created Dropbox folder: ${this.dropboxPath}`);
     } catch (error) {
-      if (error.status === 401) {
-        console.log('🔄 Token expired during folder creation, refreshing...');
-        try {
-          this.dropbox = await dropboxAuth.init();
-          // Retry the operation
-          await this.dropbox.filesCreateFolderV2({ path: this.dropboxPath });
-          console.log(`📁 Created Dropbox folder: ${this.dropboxPath}`);
-        } catch (refreshError) {
-          console.warn('Warning: Could not create Dropbox folder:', refreshError.message);
-        }
-      } else {
-        console.warn('Warning: Could not create Dropbox folder:', error.message);
-      }
+      console.warn('Warning: Could not create Dropbox folder:', error.message);
     }
   }
 
@@ -453,7 +425,7 @@ class BackupService {
       
       if (sqlFiles.length === 0) return;
 
-      // Get newest hourly backup (changed from oldest)
+      // Get newest hourly backup
       const fileStats = await Promise.all(
         sqlFiles.map(async file => ({
           filename: file,
@@ -474,8 +446,8 @@ class BackupService {
       
       console.log(`📅 Promoted hourly backup to daily: ${newFilename}`);
 
-      // Upload the promoted daily backup to Dropbox
-      if (this.dropbox) {
+      // Upload the promoted daily backup to Dropbox if enabled
+      if (this.dropboxEnabled && this.dropbox) {
         try {
           await this.uploadToDropbox(newPath, newFilename);
         } catch (error) {
@@ -497,7 +469,7 @@ class BackupService {
       
       if (sqlFiles.length === 0) return;
 
-      // Get newest daily backup (changed from oldest)
+      // Get newest daily backup
       const fileStats = await Promise.all(
         sqlFiles.map(async file => ({
           filename: file,
@@ -531,21 +503,9 @@ class BackupService {
     }
   }
 
-  // Helper method to ensure we have a working Dropbox client
-  async ensureDropboxClient() {
-    if (!this.dropbox) {
-      this.dropbox = dropboxAuth.getDropboxClient();
-    }
-    
-    if (!this.dropbox) {
-      this.dropbox = await dropboxAuth.init();
-    }
-    
-    return this.dropbox;
-  }
-
   // Get backup system status including cloud info
   async getStatus() {
+    console.log('📊 Getting backup status...');
     const backups = await this.listBackups();
     const totalBackups = Object.values(backups).reduce((sum, arr) => sum + arr.length, 0);
     const localBackups = ['hourly', 'daily', 'weekly', 'manual']
@@ -553,31 +513,17 @@ class BackupService {
       .flat();
     const totalLocalSize = localBackups.reduce((sum, backup) => sum + backup.size, 0);
 
-    // Always get fresh Dropbox client and test connection
+    // Test Dropbox connection fresh for status
     let dropboxConnected = false;
-    try {
-      const freshClient = dropboxAuth.getDropboxClient();
-      if (freshClient) {
-        await freshClient.usersGetCurrentAccount();
-        dropboxConnected = true;
-        // Update our stored client if it's working
-        this.dropbox = freshClient;
-      }
-    } catch (error) {
-      if (error.status === 401) {
-        console.log('🔄 Token expired during status check, refreshing...');
-        try {
-          this.dropbox = await dropboxAuth.init();
-          if (this.dropbox) {
-            await this.dropbox.usersGetCurrentAccount();
-            dropboxConnected = true;
-          }
-        } catch (refreshError) {
-          console.warn('Warning: Could not refresh Dropbox token:', refreshError.message);
-          dropboxConnected = false;
+    if (this.dropboxEnabled) {
+      try {
+        const testClient = dropboxAuth.getDropboxClient();
+        if (testClient) {
+          await testClient.usersGetCurrentAccount();
+          dropboxConnected = true;
         }
-      } else {
-        console.warn('Warning: Dropbox connection test failed:', error.message);
+      } catch (error) {
+        console.warn('Dropbox status check failed:', error.message);
         dropboxConnected = false;
       }
     }
