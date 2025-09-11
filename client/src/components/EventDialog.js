@@ -96,14 +96,23 @@ function EventDialog({
         jobNumbers: ''
       });
     } else if (newEvent) {
-      // For new events, if resourceId is provided, add it to jobNumbers
-      const initialJobNumbers = newEvent.resourceId ? [newEvent.resourceId] : [];
+      // For new events, if view is jobs, resourceId is jobNumbers
+      // if view is techs, resourceId is TechnicianId
+      let initialJobNumbers = [];
+      let initialTechs = [];
+      if (newEvent.view === "jobs") {
+        initialJobNumbers = [newEvent.resourceId]
+      } else {
+        const techId = newEvent.resourceId
+        initialTechs = technicians.filter(t => t.id === techId)
+      }
       setFormData({
         ...formData,
         startTime: moment(newEvent.start),
         endTime: moment(newEvent.end),
         jobNumbers: initialJobNumbers,
         allDay: newEvent.allDay,
+        Technicians: initialTechs
       });
     }
   }, [event, newEvent]);
@@ -248,8 +257,7 @@ function EventDialog({
   };
 
   const handleSave = (rrule) => {
-    if (newEvent) setFormData({ ...formData, recurrencePattern: rrule });
-    else setFormData({ ...formData, recurrencePattern: rrule});
+    setFormData({ ...formData, recurrencePattern: rrule });
   };
 
   const handleTryAgain = () => {

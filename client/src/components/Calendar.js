@@ -55,7 +55,7 @@ const MyCalendar = () => {
   };
 
   const handleSelectSlot = (slotInfo) => {
-    if (view === "jobs") {
+    // if (view === "jobs" || view === "techs") {
       const { start, end, resourceId, slots } = slotInfo;
       let adjEnd = end;
       if (slots.length === 2) {
@@ -66,13 +66,14 @@ const MyCalendar = () => {
         start,
         end: adjEnd,
         resourceId: resourceId,
-        allDay: slots.length === 1
+        allDay: slots.length === 1,
+        view
       };
       setSelectedEvent(null);
       setNewEvent(newEvent);
       setConflictError(null); // Clear any previous conflicts
       setIsDialogOpen(true);
-    }
+    // }
   };
 
   const handleCloseDialog = () => {

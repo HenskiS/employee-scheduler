@@ -57,6 +57,7 @@ const TechnicianSelector = ({ selectedTechnicians, availableTechnicians, onChang
         
         {selectedTechnicians?.length > 0 && (
           <Chip
+            key="clear-all-chip"
             label="Clear All"
             size="small"
             color="primary"
