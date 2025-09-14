@@ -31,49 +31,49 @@ function Schedule() {
   const [showAlert, setShowAlert] = useState(false);
   const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
   
-  const { events, updateDateRange } = useScheduling();
+  const { events, updateDateRange, fetchFilteredEvents } = useScheduling();
   const [filteredEvents, setFilteredEvents] = useState([]);
 
-  // Filter events when either events or filterParams change
+  // Fetch filtered events when filterParams change
   useEffect(() => {
     if (filterParams) {
-      const filtered = events.filter(event => {
-        // Start with date range filtering (always applied)
-        const startDate = new Date(filterParams.startDate);
-        const endDate = new Date(filterParams.endDate);
-        const eventStart = new Date(event.startTime);
-        const eventEnd = new Date(event.endTime);
-        const isWithinDateRange = eventStart >= startDate && eventEnd <= endDate;
-        
-        if (!isWithinDateRange) return false;
-        
-        // For email functionality - optional filtering
-        if (filterParams.source === 'email') {
-          // If includeAllEvents is true, keep all events within date range
-          if (filterParams.includeAllEvents) return true;
-          
-          // Otherwise, only include events assigned to selected technicians
-          return event.Technicians.some(tech => 
-            filterParams.technicians.map(t => t.id).includes(tech.id)
-          );
-        }
-        
-        // For print functionality - standard filtering
-        const hasMatchingLabel = !filterParams.labels?.length || 
-          filterParams.labels.map(l => l.value).includes(event.label);
-        const hasMatchingDoctor = !filterParams.doctors?.length || 
-          filterParams.doctors.map(d => d.id).includes(event.Doctor?.id);
-        const hasMatchingTechnician = !filterParams.technicians?.length || 
-          event.Technicians.some(tech => 
-            filterParams.technicians.map(t => t.id).includes(tech.id)
-          );
+      const fetchFiltered = async () => {
+        try {
+          let filters = {};
 
-        return hasMatchingLabel && hasMatchingDoctor && hasMatchingTechnician;
-      });
-      
-      setFilteredEvents(filtered);
+          // For email functionality - handle includeAllEvents
+          if (filterParams.source === 'email') {
+            if (!filterParams.includeAllEvents && filterParams.technicians?.length > 0) {
+              filters.technicians = filterParams.technicians;
+            }
+          } else {
+            // For print functionality - apply all filters
+            if (filterParams.labels?.length > 0) {
+              filters.labels = filterParams.labels;
+            }
+            if (filterParams.doctors?.length > 0) {
+              filters.doctors = filterParams.doctors;
+            }
+            if (filterParams.technicians?.length > 0) {
+              filters.technicians = filterParams.technicians;
+            }
+          }
+
+          const filtered = await fetchFilteredEvents(
+            filterParams.startDate,
+            filterParams.endDate,
+            filters
+          );
+          setFilteredEvents(filtered);
+        } catch (error) {
+          console.error('Error fetching filtered events:', error);
+          setFilteredEvents([]);
+        }
+      };
+
+      fetchFiltered();
     }
-  }, [events, filterParams]);
+  }, [filterParams, fetchFilteredEvents]);
 
   const handleOpenPeopleDialog = () => {
     setIsPeopleDialogOpen(true);

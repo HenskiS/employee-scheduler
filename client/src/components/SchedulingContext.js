@@ -126,6 +126,40 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         }
     }, [fetchData, token]);
 
+    const fetchFilteredEvents = useCallback(async (start, end, filters = {}) => {
+        if (!token) return [];
+
+        try {
+            const params = new URLSearchParams({
+                start,
+                end
+            });
+
+            if (filters.labels?.length > 0) {
+                const labelValues = filters.labels.map(label =>
+                    typeof label === 'string' ? label : label.value
+                ).join(',');
+                params.append('labels', labelValues);
+            }
+
+            if (filters.doctors?.length > 0) {
+                const doctorIds = filters.doctors.map(doctor => doctor.id).join(',');
+                params.append('doctors', doctorIds);
+            }
+
+            if (filters.technicians?.length > 0) {
+                const technicianIds = filters.technicians.map(technician => technician.id).join(',');
+                params.append('technicians', technicianIds);
+            }
+
+            const response = await axios.get(`/events?${params.toString()}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching filtered events:', error);
+            throw error;
+        }
+    }, [token]);
+
     const updateDateRange = useCallback((start, end) => {
         if (!token) return;
         
@@ -156,18 +190,19 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     }, [dateRange, token]);
 
     return (
-        <SchedulingContext.Provider value={{ 
+        <SchedulingContext.Provider value={{
             labels,
             colorMap,
-            doctors, 
-            technicians, 
-            users, 
-            events, 
-            throughThirty, 
-            loading, 
-            error, 
+            doctors,
+            technicians,
+            users,
+            events,
+            throughThirty,
+            loading,
+            error,
             refreshData,
-            updateDateRange
+            updateDateRange,
+            fetchFilteredEvents
         }}>
             {children}
         </SchedulingContext.Provider>

@@ -273,9 +273,9 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset }) => {
                 MenuProps={MenuProps}
               >
                 {doctors.map((doctor) => (
-                  <MenuItem key={doctor.customer} value={doctor}>
-                    <Checkbox checked={selectedDoctors.some(doc => doc.customer === doctor.customer)} />
-                    <ListItemText primary={doctor.customer} />
+                  <MenuItem key={`${doctor.customer} - ${doctor.city}`} value={doctor}>
+                    <Checkbox checked={selectedDoctors.some(doc => `${doc.customer} - ${doc.city}` === `${doctor.customer} - ${doctor.city}`)} />
+                    <ListItemText primary={`${doctor.customer} - ${doctor.city}`} />
                   </MenuItem>
                 ))}
               </Select>

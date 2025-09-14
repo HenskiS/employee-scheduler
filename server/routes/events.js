@@ -529,8 +529,8 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Get events in range
-const getEvents = async (start, end) => {
+// Get events in range with optional filtering
+const getEvents = async (start, end, filters = {}) => {
   try {
     const startDate = new Date(start);
     const endDate = new Date(end);
@@ -540,14 +540,43 @@ const getEvents = async (start, end) => {
       throw new Error('Invalid date range provided');
     }
 
+    // Base query with date range
+    const whereClause = {
+      startTime: { [Op.between]: [startDate, endDate] }
+    };
+
+    // Add label filtering if provided
+    if (filters.labels && filters.labels.length > 0) {
+      whereClause.label = { [Op.in]: filters.labels };
+    }
+
+    // Add doctor filtering if provided
+    if (filters.doctors && filters.doctors.length > 0) {
+      whereClause.DoctorId = { [Op.in]: filters.doctors };
+    }
+
+    // Build include array for associations
+    const includeArray = [
+      { model: Doctor }
+    ];
+
+    // Add technician filtering if provided
+    if (filters.technicians && filters.technicians.length > 0) {
+      includeArray.push({
+        model: Technician,
+        through: { attributes: [] },
+        where: { id: { [Op.in]: filters.technicians } }
+      });
+    } else {
+      includeArray.push({
+        model: Technician,
+        through: { attributes: [] }
+      });
+    }
+
     return await Event.findAll({
-      include: [
-        { model: Technician, through: { attributes: [] } },
-        { model: Doctor }
-      ],
-      where: {
-        startTime: { [Op.between]: [startDate, endDate] }
-      }
+      include: includeArray,
+      where: whereClause
     });
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -558,8 +587,24 @@ const getEvents = async (start, end) => {
 // Route handler
 const getEventsHandler = async (req, res) => {
   try {
-    const { start, end } = req.query;
-    const events = await getEvents(start, end);
+    const { start, end, labels, doctors, technicians } = req.query;
+
+    // Parse filter parameters
+    const filters = {};
+
+    if (labels) {
+      filters.labels = Array.isArray(labels) ? labels : labels.split(',');
+    }
+
+    if (doctors) {
+      filters.doctors = Array.isArray(doctors) ? doctors.map(Number) : doctors.split(',').map(Number);
+    }
+
+    if (technicians) {
+      filters.technicians = Array.isArray(technicians) ? technicians.map(Number) : technicians.split(',').map(Number);
+    }
+
+    const events = await getEvents(start, end, filters);
     res.json(events);
   } catch (error) {
     res.status(500).json({ error: 'An error occurred while fetching events' });
