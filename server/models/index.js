@@ -1,8 +1,13 @@
 // models/index.js
 const Doctor = require('./Doctor');
+const DoctorEmail = require('./DoctorEmail');
 const Technician = require('./Technician');
 const User = require('./User');
 const Event = require('./Event');
+
+// Doctor-Email relationship
+Doctor.hasMany(DoctorEmail, { as: 'emails' });
+DoctorEmail.belongsTo(Doctor);
 
 // Doctor-Technician relationships
 Doctor.belongsToMany(Technician, { through: 'DoctorPreferredTechnicians', as: 'preferredTechnicians' });
@@ -27,6 +32,7 @@ Doctor.hasMany(Event);
 
 module.exports = {
   Doctor,
+  DoctorEmail,
   Technician,
   User,
   Event
