@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Box, Button, Snackbar, Alert } from '@mui/material';
-import { 
+import {
   People as UsersIcon,
   Settings as SettingsIcon,
   Print as PrintIcon,
@@ -17,6 +18,7 @@ import { useScheduling } from './SchedulingContext';
 import axios from '../api/axios'
 
 function Schedule() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tabValue, setTabValue] = useState(0);
   const [isPeopleDialogOpen, setIsPeopleDialogOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
@@ -33,6 +35,16 @@ function Schedule() {
   
   const { events, updateDateRange, fetchFilteredEvents } = useScheduling();
   const [filteredEvents, setFilteredEvents] = useState([]);
+
+  // Check for URL parameters to open print dialog
+  useEffect(() => {
+    if (searchParams.get('openPrintDialog') === 'true') {
+      setIsPrintDialogOpen(true);
+      // Clean up the URL parameter
+      searchParams.delete('openPrintDialog');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch filtered events when filterParams change
   useEffect(() => {
@@ -115,14 +127,9 @@ function Schedule() {
   };
 
   const handlePrint = (params) => {
-    // Update the date range in context
-    updateDateRange(params.startDate, params.endDate);
-    setFilterParams({
-      ...params,
-      source: 'print'
-    });
-    setIsPrintCalendarOpen(true);
-    setIsPrintDialogOpen(false);
+    // This function is kept for backward compatibility but is no longer used
+    // The PrintDialog now navigates directly to /print-preview
+    console.log('handlePrint called (deprecated):', params);
   };
 
   const handleSendEmail = (params) => {

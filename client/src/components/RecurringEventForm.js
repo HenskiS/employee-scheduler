@@ -42,18 +42,20 @@ const RecurringEventForm = ({ startDate, rrule, onChange }) => {
           // On error, keep default state
         }
       } else {
-        // For new events, initialize with default weekly recurrence on current day
-        const currentDayOfWeek = moment().format('dd').toUpperCase();
-        setFormState(prev => ({
-          ...prev,
-          weekdays: [currentDayOfWeek]
-        }));
-        
+        // For new events, initialize based on frequency
+        let initialState = { ...formState };
+
+        // Only set weekdays for weekly frequency
+        if (formState.frequency === 'WEEKLY') {
+          const currentDayOfWeek = moment().format('dd').toUpperCase();
+          initialState.weekdays = [currentDayOfWeek];
+          setFormState(prev => ({
+            ...prev,
+            weekdays: [currentDayOfWeek]
+          }));
+        }
+
         // Generate initial rrule for new events
-        const initialState = {
-          ...formState,
-          weekdays: [currentDayOfWeek]
-        };
         const initialRRule = generateRRule(initialState);
         if (initialRRule) {
           onChange(initialRRule);
@@ -89,10 +91,15 @@ const RecurringEventForm = ({ startDate, rrule, onChange }) => {
 
   const updateFormState = (updates) => {
     // Create the new state immediately
-    const newState = {
+    let newState = {
       ...formState,
       ...updates
     };
+
+    // Clear weekdays if frequency is not WEEKLY
+    if (updates.frequency && updates.frequency !== 'WEEKLY') {
+      newState.weekdays = [];
+    }
     
     // Generate rrule with the new state before setting it
     if (!isInitialLoad) {

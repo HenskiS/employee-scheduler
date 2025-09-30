@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  Button, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  Checkbox, 
-  ListItemText, 
-  Box, 
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox,
+  ListItemText,
+  Box,
   Alert,
   FormControlLabel,
   Typography
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import moment from 'moment';
+import { useNavigate } from 'react-router-dom';
 import { useScheduling } from './SchedulingContext';
 
 const defaultDisplayOptions = {
@@ -31,8 +33,9 @@ const defaultDisplayOptions = {
   }
 };
 
-const PrintDialog = ({ open, onClose, onPrint, shouldReset }) => {
+const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => {
   const { technicians, doctors, labels } = useScheduling();
+  const navigate = useNavigate();
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [selectedLabels, setSelectedLabels] = useState([]);
@@ -55,6 +58,53 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset }) => {
       setDisplayOptions(defaultDisplayOptions);
     }
   }, [shouldReset, open]);
+
+  // Set initial values when provided
+  useEffect(() => {
+    if (initialValues && open && !shouldReset) {
+      // Set dates
+      if (initialValues.startDate) {
+        setStartDate(moment(initialValues.startDate));
+      }
+      if (initialValues.endDate) {
+        setEndDate(moment(initialValues.endDate));
+      }
+
+      // Set view
+      if (initialValues.view) {
+        setSelectedView(initialValues.view);
+      }
+
+      // Set display options
+      if (initialValues.displayOptions) {
+        setDisplayOptions(initialValues.displayOptions);
+      }
+
+      // Match and set labels
+      if (initialValues.labels && labels.length > 0) {
+        const matchedLabels = labels.filter(label =>
+          initialValues.labels.some(initLabel => initLabel.label === label.label)
+        );
+        setSelectedLabels(matchedLabels);
+      }
+
+      // Match and set doctors by ID (more efficient and reliable)
+      if (initialValues.doctors && doctors.length > 0) {
+        const matchedDoctors = doctors.filter(doctor =>
+          initialValues.doctors.some(initDoctor => initDoctor.id === doctor.id)
+        );
+        setSelectedDoctors(matchedDoctors);
+      }
+
+      // Match and set technicians by ID (more efficient and reliable)
+      if (initialValues.technicians && technicians.length > 0) {
+        const matchedTechnicians = technicians.filter(technician =>
+          initialValues.technicians.some(initTech => initTech.id === technician.id)
+        );
+        setSelectedTechnicians(matchedTechnicians);
+      }
+    }
+  }, [initialValues, open, shouldReset, labels, doctors, technicians]);
 
   const handleDisplayOptionChange = (option) => {
     if (option.startsWith('doctor.')) {
@@ -92,19 +142,64 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset }) => {
       setDateError('Start date must be before end date');
       return;
     }
-    
-    setDateError(false);
-    const filterParams = {
-      startDate: startDate.format('YYYY-MM-DD'),
-      endDate: endDate.format('YYYY-MM-DD'),
-      labels: selectedLabels,
-      doctors: selectedDoctors,
-      technicians: selectedTechnicians,
-      view: selectedView,
-      displayOptions
-    };
 
-    onPrint(filterParams);
+    setDateError(false);
+
+    // Create URL parameters with optimized data
+    const params = new URLSearchParams();
+    params.set('startDate', startDate.format('YYYY-MM-DD'));
+    params.set('endDate', endDate.format('YYYY-MM-DD'));
+    params.set('view', selectedView);
+
+    // Store only IDs and essential data for arrays
+    if (selectedLabels.length > 0) {
+      const compactLabels = selectedLabels.map(label => ({
+        label: label.label,
+        color: label.color
+      }));
+      params.set('labels', encodeURIComponent(JSON.stringify(compactLabels)));
+    }
+
+    if (selectedDoctors.length > 0) {
+      const doctorIds = selectedDoctors.map(doctor => doctor.id);
+      params.set('doctors', doctorIds.join(','));
+    }
+
+    if (selectedTechnicians.length > 0) {
+      const technicianIds = selectedTechnicians.map(tech => tech.id);
+      params.set('technicians', technicianIds.join(','));
+    }
+
+    // Compress display options by only storing non-default values
+    const defaultOpts = defaultDisplayOptions;
+    const compactDisplayOptions = {};
+
+    if (displayOptions.showDescription !== defaultOpts.showDescription) {
+      compactDisplayOptions.d = displayOptions.showDescription;
+    }
+    if (displayOptions.showLabel !== defaultOpts.showLabel) {
+      compactDisplayOptions.l = displayOptions.showLabel;
+    }
+    if (displayOptions.showTechnicians !== defaultOpts.showTechnicians) {
+      compactDisplayOptions.t = displayOptions.showTechnicians;
+    }
+    if (displayOptions.doctorInfo.showName !== defaultOpts.doctorInfo.showName) {
+      compactDisplayOptions.dn = displayOptions.doctorInfo.showName;
+    }
+    if (displayOptions.doctorInfo.showAddress !== defaultOpts.doctorInfo.showAddress) {
+      compactDisplayOptions.da = displayOptions.doctorInfo.showAddress;
+    }
+    if (displayOptions.doctorInfo.showPhone !== defaultOpts.doctorInfo.showPhone) {
+      compactDisplayOptions.dp = displayOptions.doctorInfo.showPhone;
+    }
+
+    if (Object.keys(compactDisplayOptions).length > 0) {
+      params.set('opts', encodeURIComponent(JSON.stringify(compactDisplayOptions)));
+    }
+
+    // Close dialog and navigate
+    onClose();
+    navigate(`/print-preview?${params.toString()}`);
   };
 
   const ITEM_HEIGHT = 48;

@@ -6,6 +6,7 @@ import Schedule from './components/Schedule';
 import Login from './components/Login';
 import { SchedulingProvider } from './components/SchedulingContext';
 import SchedulePdfView from './components/ServerPrint';
+import PrintPreview from './components/PrintPreview';
 
 function ProtectedRoute({ children, isLoading }) {
   const location = useLocation();
@@ -75,6 +76,16 @@ function App() {
             element={
               <Container maxWidth={false}>
                 <SchedulePdfView />
+              </Container>
+            }
+          />
+          <Route
+            path="/print-preview"
+            element={
+              <Container maxWidth={false}>
+                <ProtectedRoute isLoading={isLoading}>
+                  <PrintPreview />
+                </ProtectedRoute>
               </Container>
             }
           />
