@@ -227,13 +227,17 @@ const MyCalendar = () => {
   
     const startTime = moment(event.start).format('h:mm A');
     const endTime = moment(event.end).format('h:mm A');
+
+    let dr = ""
+    if (event.Doctor?.customer) dr += event.Doctor.customer
+    if (event.Doctor?.city) dr += " - " + event.Doctor.city
     
     return (
       <div style={style}>
         <div style={timeStyle}>{`${startTime} – ${endTime}`}</div>
         <div style={titleStyle}>{event.title}</div>
         <div style={timeStyle}>{event.description}</div>
-        <div style={timeStyle}>{event.Doctor?.customer || ""}</div>
+        <div style={timeStyle}>{dr}</div>
       </div>
     );
   };
