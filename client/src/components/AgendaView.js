@@ -24,7 +24,7 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
       <div className="agenda-event-doctor-details">
         {filterParams.displayOptions.doctorInfo.showName && (
           <div className="agenda-event-doctor-name">
-            {event.Doctor.customer}
+            {event.Doctor.customer} - {event.Doctor.city}
           </div>
         )}
         {filterParams.displayOptions.doctorInfo.showAddress && (
