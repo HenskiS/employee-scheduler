@@ -78,6 +78,17 @@ const PeopleDialog = ({ open, onClose }) => {
     setSelectedPerson(null);
     setIsAdding(false);
     setEditMode(false);
+  };
+
+  const handleCancel = () => {
+    if (isAdding) {
+      setIsAdding(false);
+      setSelectedPerson(null);
+      if (isMobile) {
+        setShowingDetails(false);
+      }
+    }
+    setEditMode(false);
     if (isMobile) {
       setShowingDetails(false);
     }
@@ -148,6 +159,7 @@ const PeopleDialog = ({ open, onClose }) => {
               onEdit={() => setEditMode(true)}
               onSave={handleSave}
               onDelete={handleDelete}
+              onCancel={handleCancel}
             />
           )}
         </Box>

@@ -179,9 +179,11 @@ const PersonDetails = ({
   personType,
   onEdit,
   onSave,
-  onDelete
+  onDelete,
+  onCancel
 }) => {
   const [formData, setFormData] = useState({});
+  const [originalData, setOriginalData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
@@ -190,12 +192,17 @@ const PersonDetails = ({
 
   useEffect(() => {
     if (person) {
-      setFormData({
+      const data = {
         ...person,
         emails: person.emails || []
-      });
+      };
+      setFormData(data);
+      setOriginalData(data);
     } else {
       setFormData({
+        emails: []
+      });
+      setOriginalData({
         emails: []
       });
     }
@@ -255,7 +262,7 @@ const PersonDetails = ({
       onSave(response.data);
     } catch (err) {
       setError(
-        err.response?.data?.message || 
+        err.response?.data?.error || 
         'An error occurred while saving. Please try again.'
       );
     } finally {
@@ -286,9 +293,18 @@ const PersonDetails = ({
 
   const handleFieldChange = (key, value) => {
     setFormData(prev => ({ ...prev, [key]: value }));
-    
+
     if (validationErrors[key]) {
       setValidationErrors(prev => ({ ...prev, [key]: null }));
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData(originalData);
+    setValidationErrors({});
+    setError(null);
+    if (onCancel) {
+      onCancel();
     }
   };
 
@@ -305,18 +321,61 @@ const PersonDetails = ({
   const fields = FIELD_CONFIGS[personType];
 
   return (
-    <Box sx={{ width: isMobile ? '100%' : '45%', pl: 2, pr: 2, overflowY: 'auto' }}>
-      <Typography variant="h6" sx={{ mb: 2, mt: 2 }}>
-        {isAdding ? `Add New ${PERSON_TYPES[personType].slice(0, -1)}` : formData.name || formData.customer}
-      </Typography>
-      <Divider sx={{ mb: 2 }} />
-      
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      
+    <Box sx={{ width: isMobile ? '100%' : '45%', pl: 2, pr: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1, pt: 2 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          {isAdding ? `Add New ${PERSON_TYPES[personType].slice(0, -1)}` : formData.name || formData.customer}
+        </Typography>
+        <Divider sx={{ mb: 2 }} />
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Box sx={{ display: 'flex', justifyContent: isAdding ? 'flex-end' : 'space-between', gap: 1, mb: 1 }}>
+          {!isAdding && (
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={handleDelete}
+              startIcon={<Delete />}
+              disabled={loading}
+            >
+              DELETE
+            </Button>
+          )}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {editMode || isAdding ? (
+              <>
+                <Button
+                  variant="outlined"
+                  onClick={handleCancel}
+                  disabled={loading}
+                >
+                  CANCEL
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleSave}
+                  startIcon={loading ? <CircularProgress size={20} /> : <Save />}
+                  disabled={loading}
+                >
+                  {loading ? 'SAVING...' : 'SAVE'}
+                </Button>
+              </>
+            ) : (
+              <Button variant="outlined" onClick={onEdit} startIcon={<Edit />}>
+                EDIT
+              </Button>
+            )}
+          </Box>
+        </Box>
+      </Box>
+
+      <Box sx={{ overflowY: 'auto', flex: 1, pt: 2 }}>
+
       {fields.map(({ key, label, required, type, multiline, rows }) =>
         type === 'checkbox' ? (
           <FormControlLabel
@@ -357,48 +416,22 @@ const PersonDetails = ({
         )
       )}
 
-      {personType === 0 && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <EmailManager
-            emails={formData.emails || []}
-            onChange={(emails) => handleFieldChange('emails', emails)}
-            editMode={editMode}
-          />
-        </>
-      )}
-
-      <Box sx={{ display: 'flex', justifyContent: isAdding ? 'flex-end' : 'space-between', mt: 2, mb: 2 }}>
-        {!isAdding && (
-          <Button 
-            variant="outlined" 
-            color="error" 
-            onClick={handleDelete} 
-            startIcon={<Delete />}
-            disabled={loading}
-          >
-            DELETE
-          </Button>
+        {personType === 0 && (
+          <>
+            <Divider sx={{ my: 3 }} />
+            <EmailManager
+              emails={formData.emails || []}
+              onChange={(emails) => handleFieldChange('emails', emails)}
+              editMode={editMode}
+            />
+          </>
         )}
-        {editMode || isAdding ? (
-          <Button 
-            variant="contained" 
-            onClick={handleSave} 
-            startIcon={loading ? <CircularProgress size={20} /> : <Save />}
-            disabled={loading}
-          >
-            {loading ? 'SAVING...' : 'SAVE'}
-          </Button>
-        ) : (
-          <Button variant="outlined" onClick={onEdit} startIcon={<Edit />}>
-            EDIT
-          </Button>
-        )}
+        <Box sx={{ mb: 2 }} />
       </Box>
 
-      <Snackbar 
-        open={!!successMessage} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={6000}
         onClose={() => setSuccessMessage('')}
       >
         <Alert severity="success" onClose={() => setSuccessMessage('')}>

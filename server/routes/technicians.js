@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Technician = require('../models/Technician');
+const { Technician } = require('../models');
 const authMiddleware = require('../middleware/auth');
 
 // Create a new technician
