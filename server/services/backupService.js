@@ -69,21 +69,18 @@ class BackupService {
     // Set password environment variable
     const env = { ...process.env, PGPASSWORD: config.password };
 
-    const command = `pg_dump -h ${config.host} -p ${config.port} -U ${config.username} -d ${config.database} --no-password --clean --if-exists`;
+    // Stream directly to file
+    const command = `pg_dump -h ${config.host} -p ${config.port} -U ${config.username} -d ${config.database} --no-password --clean --if-exists -f "${backupPath}"`;
 
     try {
       console.log(`🔄 Creating ${type} backup: ${filename}`);
       
-      // FIXED: Increase maxBuffer to 100MB (default is 1MB) to handle large databases
-      // Also pipe directly to file instead of capturing in memory
-      const { stdout } = await execAsync(command, { 
-        env,
-        maxBuffer: 100 * 1024 * 1024 // 100MB buffer
-      });
+      // Execute pg_dump with output file specified - no buffer needed
+      await execAsync(command, { env });
       
-      await fs.writeFile(backupPath, stdout);
-      
-      console.log(`✅ Backup created: ${filename}`);
+      // Verify the file was created
+      const stats = await fs.stat(backupPath);
+      console.log(`✅ Backup created: ${filename} (${(stats.size / 1024).toFixed(2)} KB)`);
       
       // Try to upload daily backups to Dropbox, but don't fail if it doesn't work
       if (type === 'daily' && this.dropboxEnabled && this.dropbox) {
