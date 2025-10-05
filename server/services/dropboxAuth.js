@@ -1,4 +1,4 @@
-// services/dropboxAuth.js
+﻿// services/dropboxAuth.js
 const fs = require('fs').promises;
 const path = require('path');
 const { Dropbox } = require('dropbox');
@@ -10,7 +10,7 @@ class DropboxAuth {
     this.clientSecret = process.env.DROPBOX_APP_SECRET;
     this.dropbox = null;
     this.initialized = false;
-    this.isRefreshing = false; // Prevent multiple concurrent refresh attempts
+    this.refreshPromise = null; // Track refresh promise instead of boolean flag
     
     // Debug environment variables - but only log once
     if (!this._configLogged) {
@@ -20,24 +20,21 @@ class DropboxAuth {
       console.log(`   Token File: ${this.tokenFile}`);
       this._configLogged = true;
     }
-    
-    // REMOVED: Auto-initialization that was causing loops
-    // Don't auto-initialize in constructor - let it be called explicitly when needed
   }
 
   async init() {
-    if (this.initialized) {
+    if (this.initialized && this.dropbox) {
       return this.dropbox;
     }
     
-    // Prevent multiple simultaneous initialization attempts
-    if (this.isRefreshing) {
-      console.log('⏳ Dropbox initialization already in progress...');
-      return null;
+    // If refresh is in progress, wait for it
+    if (this.refreshPromise) {
+      console.log('⏳ Waiting for token refresh to complete...');
+      await this.refreshPromise;
+      return this.dropbox;
     }
     
     try {
-      this.isRefreshing = true;
       console.log('🔍 Loading Dropbox tokens...');
       const tokens = await this.loadTokens();
       
@@ -65,12 +62,12 @@ class DropboxAuth {
               return result;
             } else {
               console.warn('⚠️ No refresh token available - need re-authorization');
-              this.initialized = true; // Mark as initialized even if failed
+              this.initialized = true;
               return null;
             }
           }
           console.error('❌ Dropbox test failed:', error.message);
-          this.initialized = true; // Mark as initialized even if failed
+          this.initialized = true;
           return null;
         }
       } else {
@@ -80,10 +77,8 @@ class DropboxAuth {
       }
     } catch (error) {
       console.error('❌ Dropbox auth initialization failed:', error.message);
-      this.initialized = true; // Always mark as initialized to prevent loops
+      this.initialized = true;
       return null;
-    } finally {
-      this.isRefreshing = false;
     }
   }
 
@@ -135,61 +130,65 @@ class DropboxAuth {
       throw new Error('No refresh token available. Need to re-authorize app.');
     }
 
-    // Prevent multiple concurrent refresh attempts
-    if (this.isRefreshing) {
-      console.log('⏳ Token refresh already in progress...');
-      return null;
+    // If refresh is already in progress, wait for it
+    if (this.refreshPromise) {
+      console.log('⏳ Token refresh already in progress, waiting...');
+      return await this.refreshPromise;
     }
 
-    try {
-      this.isRefreshing = true;
-      console.log('🔄 Refreshing Dropbox access token...');
-      
-      const response = await fetch('https://api.dropbox.com/oauth2/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-          client_id: this.clientId,
-          client_secret: this.clientSecret,
-        }),
-      });
+    // Create refresh promise that others can wait on
+    this.refreshPromise = (async () => {
+      try {
+        console.log('🔄 Refreshing Dropbox access token...');
+        
+        const response = await fetch('https://api.dropbox.com/oauth2/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: this.clientId,
+            client_secret: this.clientSecret,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Token refresh failed: ${response.status} ${response.statusText} - ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Token refresh failed: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const newTokens = await response.json();
+        
+        // Save new tokens
+        await this.saveTokens({
+          access_token: newTokens.access_token,
+          refresh_token: newTokens.refresh_token || refreshToken, // Keep old refresh token if new one not provided
+          expires_in: newTokens.expires_in
+        });
+
+        // Create new Dropbox client with fresh token
+        this.dropbox = new Dropbox({ 
+          accessToken: newTokens.access_token,
+          clientId: this.clientId,
+          clientSecret: this.clientSecret
+        });
+
+        console.log('✅ Dropbox access token refreshed successfully');
+        return this.dropbox;
+
+      } catch (error) {
+        console.error('❌ Token refresh failed:', error.message);
+        // Clear the client so we don't keep using invalid tokens
+        this.dropbox = null;
+        throw error;
+      } finally {
+        this.refreshPromise = null;
       }
+    })();
 
-      const newTokens = await response.json();
-      
-      // Save new tokens
-      await this.saveTokens({
-        access_token: newTokens.access_token,
-        refresh_token: newTokens.refresh_token || refreshToken, // Keep old refresh token if new one not provided
-        expires_in: newTokens.expires_in
-      });
-
-      // Create new Dropbox client with fresh token
-      this.dropbox = new Dropbox({ 
-        accessToken: newTokens.access_token,
-        clientId: this.clientId,
-        clientSecret: this.clientSecret
-      });
-
-      console.log('✅ Dropbox access token refreshed successfully');
-      return this.dropbox;
-
-    } catch (error) {
-      console.error('❌ Token refresh failed:', error.message);
-      // Clear the client so we don't keep using invalid tokens
-      this.dropbox = null;
-      throw error;
-    } finally {
-      this.isRefreshing = false;
-    }
+    return await this.refreshPromise;
   }
 
   // Generate authorization URL for initial setup
@@ -253,7 +252,7 @@ class DropboxAuth {
   reset() {
     this.dropbox = null;
     this.initialized = false;
-    this.isRefreshing = false;
+    this.refreshPromise = null;
   }
 }
 

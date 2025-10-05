@@ -1,4 +1,4 @@
-// services/backupService.js
+﻿// services/backupService.js
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs').promises;
@@ -73,7 +73,14 @@ class BackupService {
 
     try {
       console.log(`🔄 Creating ${type} backup: ${filename}`);
-      const { stdout } = await execAsync(command, { env });
+      
+      // FIXED: Increase maxBuffer to 100MB (default is 1MB) to handle large databases
+      // Also pipe directly to file instead of capturing in memory
+      const { stdout } = await execAsync(command, { 
+        env,
+        maxBuffer: 100 * 1024 * 1024 // 100MB buffer
+      });
+      
       await fs.writeFile(backupPath, stdout);
       
       console.log(`✅ Backup created: ${filename}`);
@@ -136,12 +143,15 @@ class BackupService {
         if (error.status === 401 && attempt === 1) {
           console.log('🔄 Token expired during upload, attempting refresh...');
           try {
-            this.dropbox = await dropboxAuth.init();
-            if (!this.dropbox) {
-              this.dropboxEnabled = false;
-              throw new Error('Could not refresh Dropbox token');
+            const tokens = await dropboxAuth.loadTokens();
+            if (tokens && tokens.refresh_token) {
+              this.dropbox = await dropboxAuth.refreshAccessToken(tokens.refresh_token);
+              if (!this.dropbox) {
+                this.dropboxEnabled = false;
+                throw new Error('Could not refresh Dropbox token');
+              }
+              continue; // Retry with new token
             }
-            continue; // Retry with new token
           } catch (refreshError) {
             console.error('❌ Token refresh failed:', refreshError.message);
             this.dropboxEnabled = false;
@@ -169,7 +179,7 @@ class BackupService {
     };
     
     // Always list local backups first
-    console.log('📁 Listing local backups...');
+    console.log('🔍 Listing local backups...');
     for (const type of ['hourly', 'daily', 'weekly', 'manual']) {
       const dir = path.join(this.backupDir, type);
       
