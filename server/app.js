@@ -11,6 +11,7 @@ const { router: scheduleRoutes} = require('./routes/schedules');
 const { router: backupRoutes} = require('./routes/backup');
 const refreshRoutes = require('./routes/refresh');
 const loggingMiddleware = require('./middleware/logging');
+const backupService = require('./services/backupService');
 
 require('./models');
 
@@ -62,8 +63,17 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 sequelize.authenticate()
-  .then(() => {
+  .then(async () => {
     console.log('Database connection established successfully.');
+    // Initialize backup service after database is connected
+    try {
+      await backupService.init();
+      console.log('Backup service initialized successfully.');
+    } catch (error) {
+      console.error('Warning: Backup service initialization failed:', error.message);
+      // Don't crash the server if backups fail
+    }
+    
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

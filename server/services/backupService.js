@@ -521,19 +521,8 @@ class BackupService {
     const totalLocalSize = localBackups.reduce((sum, backup) => sum + backup.size, 0);
 
     // Test Dropbox connection fresh for status
-    let dropboxConnected = false;
-    if (this.dropboxEnabled) {
-      try {
-        const testClient = dropboxAuth.getDropboxClient();
-        if (testClient) {
-          await testClient.usersGetCurrentAccount();
-          dropboxConnected = true;
-        }
-      } catch (error) {
-        console.warn('Dropbox status check failed:', error.message);
-        dropboxConnected = false;
-      }
-    }
+    // Test Dropbox connection - use the same client that listBackups used
+    let dropboxConnected = this.dropboxEnabled && this.dropbox !== null;
 
     return {
       totalBackups,
@@ -549,6 +538,30 @@ class BackupService {
       lastCloudBackup: backups.cloud[0]?.created || null,
       dropboxEnabled: dropboxConnected
     };
+  }
+
+  // Refresh Dropbox connection (called from API route)
+  async refreshDropboxConnection() {
+    try {
+      console.log('🔄 Refreshing Dropbox connection...');
+      this.dropbox = await dropboxAuth.init();
+      
+      if (this.dropbox) {
+        await this.ensureDropboxFolder();
+        this.dropboxEnabled = true;
+        console.log('✅ Dropbox connection refreshed');
+        return true;
+      } else {
+        this.dropboxEnabled = false;
+        console.log('⚠️ Dropbox not configured');
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Dropbox refresh failed:', error.message);
+      this.dropbox = null;
+      this.dropboxEnabled = false;
+      return false;
+    }
   }
 }
 
