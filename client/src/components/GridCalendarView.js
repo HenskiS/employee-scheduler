@@ -56,7 +56,7 @@ const GridCalendarView = ({
 
     const cellClassName = [
       'calendar-cell',
-      (dayInfo.isCurrentMonth || dayInfo.isInRange) ? 'current-month' : 'other-month',
+      (dayInfo.isCurrentMonth || (view === 'week' && dayInfo.isInRange)) ? 'current-month' : 'other-month',
       !dayInfo.isInRange ? 'out-of-range' : '',
       view === 'week' ? 'week-view' : '',
       dayInfo.isInRange ? 'hover:bg-gray-50' : ''
