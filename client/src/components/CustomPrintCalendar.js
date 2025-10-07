@@ -120,10 +120,10 @@ const Calendar = ({
     const startDay = monthStart.getDay();
     
     // Add previous month's days
-    for (let i = 0; i < startDay; i++) { 
+    for (let i = 0; i < startDay; i++) {
       const prevDate = new Date(monthStart);
       prevDate.setDate(prevDate.getDate() - (startDay - i));
-      allDays.unshift({
+      allDays.push({
         date: prevDate,
         isCurrentMonth: false,
         isInRange: isDateInRange(prevDate)
@@ -167,17 +167,17 @@ const Calendar = ({
     const weekDays = [];
     const weekStart = new Date(date);
     weekStart.setDate(date.getDate() - date.getDay());
-    
+
     for (let i = 0; i < 7; i++) {
       const currentDate = new Date(weekStart);
-      currentDate.setDate(weekStart.getDate() + i);
+      currentDate.setDate(currentDate.getDate() + i);
       weekDays.push({
         date: currentDate,
         isCurrentMonth: currentDate.getMonth() === date.getMonth(),
         isInRange: isDateInRange(currentDate)
       });
     }
-    
+
     return weekDays;
   };
 
