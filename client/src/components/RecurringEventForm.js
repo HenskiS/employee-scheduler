@@ -137,6 +137,7 @@ const RecurringEventForm = ({ startDate, rrule, onChange }) => {
           value={formState.interval}
           onChange={(e) => updateFormState({ interval: e.target.value })}
           style={{flex: 1}}
+          inputProps={{ min: 1 }}
         />
       </div>
       {formState.frequency === 'WEEKLY' && (

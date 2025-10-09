@@ -8,7 +8,38 @@ const RRule = require('rrule').RRule;
 
 // Helper function to create recurring events
 const createRecurringEvents = async (originalEvent, rule, transaction) => {
-  const rrule = RRule.fromString(rule);
+  let rrule;
+  try {
+    rrule = RRule.fromString(rule);
+
+    // Comprehensive validation
+    if (!rrule.options.interval || rrule.options.interval <= 0) {
+      throw new Error('Recurrence interval must be greater than 0');
+    }
+
+    // Validate weekly frequency has weekdays
+    if (rrule.options.freq === RRule.WEEKLY) {
+      if (!rrule.options.byweekday || rrule.options.byweekday.length === 0) {
+        throw new Error('Weekly recurrence requires at least one weekday');
+      }
+    }
+
+    // Validate until date is after start date
+    if (rrule.options.until) {
+      const eventStart = new Date(originalEvent.startTime);
+      if (rrule.options.until < eventStart) {
+        throw new Error('Recurrence end date must be after start date');
+      }
+    }
+
+    // Validate interval is reasonable (prevent performance issues)
+    if (rrule.options.interval > 1000) {
+      throw new Error('Recurrence interval is too large (max: 1000)');
+    }
+  } catch (error) {
+    throw new Error(`Invalid recurrence rule: ${error.message}`);
+  }
+
   const eventStart = new Date(originalEvent.startTime);
   const eventEnd = new Date(originalEvent.endTime);
   const eventDuration = eventEnd - eventStart;
@@ -562,11 +593,19 @@ const getEvents = async (start, end, filters = {}) => {
 
     // Add technician filtering if provided
     if (filters.technicians && filters.technicians.length > 0) {
+      // When filtering by technicians, include events assigned to those technicians OR forAll events
       includeArray.push({
         model: Technician,
         through: { attributes: [] },
-        where: { id: { [Op.in]: filters.technicians } }
+        where: { id: { [Op.in]: filters.technicians } },
+        required: false // Left join to allow forAll events with no technicians
       });
+
+      // Modify where clause to include forAll events
+      whereClause[Op.or] = [
+        { forAll: true },
+        { '$Technicians.id$': { [Op.in]: filters.technicians } }
+      ];
     } else {
       includeArray.push({
         model: Technician,

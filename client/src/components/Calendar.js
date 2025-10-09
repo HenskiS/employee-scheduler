@@ -103,14 +103,15 @@ const MyCalendar = () => {
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving event:', error);
-      
+
       // Check if it's a conflict error
       if (error.response && error.response.status === 409 && error.response.data.hasConflicts) {
         setConflictError(error.response.data);
         // Don't close the dialog - let user decide what to do
       } else {
-        // For other errors, you might want to show a general error message
-        // but still keep the dialog open
+        // For other errors, show a general error message
+        const errorMessage = error.response?.data?.error || error.message || 'An error occurred while saving the event';
+        alert(`Error: ${errorMessage}`);
         console.error('Non-conflict error:', error);
       }
     }
