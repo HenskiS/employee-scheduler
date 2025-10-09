@@ -28,15 +28,17 @@ import RecurringEventForm from './RecurringEventForm';
 import TechnicianSelector from './TechnicianSelector';
 import RecurringEventChoiceDialog from './RecurringEventChoiceDialog';
 
-function EventDialog({ 
-  open, 
-  onClose, 
-  event, 
-  onSave, 
-  onDelete, 
-  newEvent, 
-  conflictError, 
-  onClearConflicts 
+function EventDialog({
+  open,
+  onClose,
+  event,
+  onSave,
+  onDelete,
+  newEvent,
+  conflictError,
+  onClearConflicts,
+  generalError,
+  onClearGeneralError
 }) {
   const { technicians, doctors, labels, throughThirty } = useScheduling();
 
@@ -388,6 +390,14 @@ function EventDialog({
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle>{event ? 'Edit Event' : 'New Event'}</DialogTitle>
         <DialogContent>
+          {/* Show general errors */}
+          {generalError && (
+            <Alert severity="error" onClose={onClearGeneralError} sx={{ mb: 2 }}>
+              <AlertTitle>Error</AlertTitle>
+              {generalError}
+            </Alert>
+          )}
+
           {/* Show conflicts if they exist */}
           {conflictError && showConflicts && (
             <ConflictDisplay conflictError={conflictError} />

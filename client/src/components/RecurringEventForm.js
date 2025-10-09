@@ -66,9 +66,16 @@ const RecurringEventForm = ({ startDate, rrule, onChange }) => {
   }, [rrule, isInitialLoad, onChange]);
 
   const generateRRule = useCallback((stateToUse) => {
+    // Validate interval
+    const interval = parseInt(stateToUse.interval);
+    if (isNaN(interval) || interval < 1) {
+      console.error("Invalid interval: must be at least 1");
+      return null;
+    }
+
     const rruleOptions = {
       freq: RRule[stateToUse.frequency],
-      interval: parseInt(stateToUse.interval) || 1,
+      interval: interval,
       dtstart: startDate ? moment(startDate).toDate() : new Date(),
     };
 
@@ -135,9 +142,25 @@ const RecurringEventForm = ({ startDate, rrule, onChange }) => {
           type="number"
           label="Interval"
           value={formState.interval}
-          onChange={(e) => updateFormState({ interval: e.target.value })}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Only update if value is empty or a positive number
+            if (value === '' || (parseInt(value) >= 1 && !value.includes('-') && !value.includes('.'))) {
+              updateFormState({ interval: value });
+            }
+          }}
+          onBlur={(e) => {
+            // On blur, ensure we have a valid value
+            const value = parseInt(e.target.value);
+            if (isNaN(value) || value < 1) {
+              updateFormState({ interval: 1 });
+            }
+          }}
+          onWheel={(e) => e.target.blur()}
           style={{flex: 1}}
           inputProps={{ min: 1 }}
+          error={formState.interval !== '' && (isNaN(parseInt(formState.interval)) || parseInt(formState.interval) < 1)}
+          helperText={formState.interval !== '' && (isNaN(parseInt(formState.interval)) || parseInt(formState.interval) < 1) ? "Interval must be at least 1" : ""}
         />
       </div>
       {formState.frequency === 'WEEKLY' && (

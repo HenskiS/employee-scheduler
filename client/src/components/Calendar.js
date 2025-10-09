@@ -21,6 +21,7 @@ const MyCalendar = () => {
   const { colorMap } = useScheduling();
   const [currentView, setCurrentView] = useState('day'); // cal view (day/agenda)
   const [conflictError, setConflictError] = useState(null);
+  const [generalError, setGeneralError] = useState(null);
 
   // Modified to handle both job numbers and technician resources
   useEffect(() => {
@@ -81,6 +82,7 @@ const MyCalendar = () => {
     setSelectedEvent(null);
     setNewEvent(null);
     setConflictError(null); // Clear conflicts when closing
+    setGeneralError(null); // Clear general errors when closing
   };
 
   const handleSaveEvent = async (event, updateType = 'single', force = false) => {
@@ -107,11 +109,13 @@ const MyCalendar = () => {
       // Check if it's a conflict error
       if (error.response && error.response.status === 409 && error.response.data.hasConflicts) {
         setConflictError(error.response.data);
+        setGeneralError(null);
         // Don't close the dialog - let user decide what to do
       } else {
         // For other errors, show a general error message
         const errorMessage = error.response?.data?.error || error.message || 'An error occurred while saving the event';
-        alert(`Error: ${errorMessage}`);
+        setGeneralError(errorMessage);
+        setConflictError(null);
         console.error('Non-conflict error:', error);
       }
     }
@@ -256,11 +260,13 @@ const MyCalendar = () => {
           open={isDialogOpen}
           event={selectedEvent}
           newEvent={newEvent}
-          onClose={handleCloseDialog} 
+          onClose={handleCloseDialog}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
           conflictError={conflictError}
           onClearConflicts={() => setConflictError(null)}
+          generalError={generalError}
+          onClearGeneralError={() => setGeneralError(null)}
         />
       )}
       <Calendar
