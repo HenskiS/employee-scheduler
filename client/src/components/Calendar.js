@@ -12,7 +12,7 @@ const localizer = momentLocalizer(moment);
 
 const MyCalendar = () => {
   const [view, setView] = useState("jobs");
-  const { technicians, events, refreshData, throughThirty, updateDateRange } = useScheduling();
+  const { technicians, events, refreshData, jobNumberOptions, updateDateRange } = useScheduling();
   const [resources, setResources] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -27,15 +27,15 @@ const MyCalendar = () => {
   useEffect(() => {
     let r;
     if (view === "jobs") {
-      r = throughThirty.map(num => ({ id: num, title: num }));
+      r = jobNumberOptions.map(num => ({ id: num, title: num }));
     } else {
-      r = technicians.map(technician => ({ 
-        id: technician.id, 
-        title: technician.name 
+      r = technicians.map(technician => ({
+        id: technician.id,
+        title: technician.name
       }));
     }
     setResources(r);
-  }, [view, technicians, throughThirty]);
+  }, [view, technicians, jobNumberOptions]);
 
   useEffect(() => {
     const start = moment(selectedDate).startOf('day');

@@ -5,7 +5,8 @@ import {
   People as UsersIcon,
   Settings as SettingsIcon,
   Print as PrintIcon,
-  Email as EmailIcon
+  Email as EmailIcon,
+  Tune as TuneIcon
 } from '@mui/icons-material';
 import Calendar from './Calendar';
 import PeopleDialog from './PeopleDialog';
@@ -13,6 +14,7 @@ import PrintDialog from './PrintDialog';
 import EmailScheduleDialog from './email/EmailScheduleDialog';
 import EmailStatusDialog from './email/EmailStatusDialog';
 import BackupDialog from './BackupDialog';
+import SettingsDialog from './SettingsDialog';
 import PrintHandler from './PrintHandler';
 import { useScheduling } from './SchedulingContext';
 import axios from '../api/axios'
@@ -32,6 +34,7 @@ function Schedule() {
   const [alertSeverity, setAlertSeverity] = useState('success');
   const [showAlert, setShowAlert] = useState(false);
   const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   
   const { events, updateDateRange, fetchFilteredEvents } = useScheduling();
   const [filteredEvents, setFilteredEvents] = useState([]);
@@ -193,8 +196,11 @@ function Schedule() {
             <Button startIcon={<EmailIcon />} onClick={handleOpenEmailDialog}>
               Email Schedules
             </Button>
-            <Button startIcon={<SettingsIcon />} onClick={() => setIsBackupDialogOpen(true)}>
+            <Button startIcon={<TuneIcon />} onClick={() => setIsBackupDialogOpen(true)}>
               Backup
+            </Button>
+            <Button startIcon={<SettingsIcon />} onClick={() => setIsSettingsDialogOpen(true)}>
+              Settings
             </Button>
           </Box>
           <Box mt={2}>
@@ -224,11 +230,15 @@ function Schedule() {
         onClose={handleCloseEmailStatusDialog}
         statusId={emailStatusId}
       />
-      <BackupDialog 
-        open={isBackupDialogOpen} 
-        onClose={() => setIsBackupDialogOpen(false)} 
+      <BackupDialog
+        open={isBackupDialogOpen}
+        onClose={() => setIsBackupDialogOpen(false)}
       />
-      
+      <SettingsDialog
+        open={isSettingsDialogOpen}
+        onClose={() => setIsSettingsDialogOpen(false)}
+      />
+
       <Snackbar 
         open={showAlert} 
         autoHideDuration={6000} 

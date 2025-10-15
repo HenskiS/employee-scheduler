@@ -6,12 +6,6 @@ const SchedulingContext = createContext();
 
 const DEFAULT_REFRESH_INTERVAL = 30 * 1000; // 30 seconds
 
-const throughThirty = [
-    "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-    "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-    "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"
-];
-
 const labels = [
     { label: 'None', value: 'none', color: 'rgba(145,180,232,255)' },
     { label: 'Available', value: 'available', color: 'rgba(255,149,0,255)' },
@@ -51,6 +45,8 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     const [technicians, setTechnicians] = useState([]);
     const [users, setUsers] = useState([]);
     const [events, setEvents] = useState([]);
+    const [maxJobNumber, setMaxJobNumber] = useState(30);
+    const [jobNumberOptions, setJobNumberOptions] = useState([]);
     const [dateRange, setDateRange] = useState({
         start: moment().startOf('month').toISOString(),
         end: moment().endOf('month').toISOString()
@@ -58,6 +54,30 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
+
+    // Fetch settings when authenticated
+    useEffect(() => {
+        if (!token) return;
+
+        const fetchSettings = async () => {
+            try {
+                const response = await axios.get('/settings');
+                const { maxJobNumber: max } = response.data;
+                setMaxJobNumber(max);
+
+                // Generate job numbers array
+                const numbers = Array.from({ length: max }, (_, i) => String(i + 1));
+                setJobNumberOptions(numbers);
+            } catch (err) {
+                console.error('Error fetching settings:', err);
+                // Use defaults if fetch fails
+                setMaxJobNumber(30);
+                setJobNumberOptions(Array.from({ length: 30 }, (_, i) => String(i + 1)));
+            }
+        };
+
+        fetchSettings();
+    }, [token]);
 
     // Watch for token changes
     useEffect(() => {
@@ -68,7 +88,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
 
         // Listen for storage changes
         window.addEventListener('storage', handleStorageChange);
-        
+
         // Also set up an interval to check localStorage directly
         // This handles same-window token changes
         const tokenCheckInterval = setInterval(() => {
@@ -197,7 +217,8 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             technicians,
             users,
             events,
-            throughThirty,
+            maxJobNumber,
+            jobNumberOptions,
             loading,
             error,
             refreshData,

@@ -40,7 +40,7 @@ function EventDialog({
   generalError,
   onClearGeneralError
 }) {
-  const { technicians, doctors, labels, throughThirty } = useScheduling();
+  const { technicians, doctors, labels, jobNumberOptions, maxJobNumber } = useScheduling();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -62,13 +62,75 @@ function EventDialog({
     endTime: '',
     jobNumbers: ''
   });
+  const [jobNumberInput, setJobNumberInput] = useState('');
   const [showRecurringChoice, setShowRecurringChoice] = useState(false);
   const [recurringAction, setRecurringAction] = useState(null);
   const [showConflicts, setShowConflicts] = useState(false);
 
+  // Parse job number range syntax (e.g., "1-6,8,10")
+  const parseJobNumbers = (input) => {
+    if (!input.trim()) return [];
+
+    const numbers = new Set();
+    const parts = input.split(',').map(p => p.trim());
+
+    for (const part of parts) {
+      if (part.includes('-')) {
+        // Handle range (e.g., "1-6")
+        const [start, end] = part.split('-').map(n => parseInt(n.trim(), 10));
+        if (isNaN(start) || isNaN(end) || start < 1 || end > maxJobNumber || start > end) {
+          return null; // Invalid range
+        }
+        for (let i = start; i <= end; i++) {
+          numbers.add(String(i));
+        }
+      } else {
+        // Handle single number
+        const num = parseInt(part, 10);
+        if (isNaN(num) || num < 1 || num > maxJobNumber) {
+          return null; // Invalid number
+        }
+        numbers.add(String(num));
+      }
+    }
+
+    return Array.from(numbers).sort((a, b) => parseInt(a) - parseInt(b));
+  };
+
+  // Convert job numbers array to display string
+  const formatJobNumbers = (jobNumbers) => {
+    if (!jobNumbers || jobNumbers.length === 0) return '';
+
+    const sorted = jobNumbers.map(n => parseInt(n)).sort((a, b) => a - b);
+    const ranges = [];
+    let start = sorted[0];
+    let end = sorted[0];
+
+    for (let i = 1; i <= sorted.length; i++) {
+      if (i < sorted.length && sorted[i] === end + 1) {
+        end = sorted[i];
+      } else {
+        if (start === end) {
+          ranges.push(String(start));
+        } else if (end === start + 1) {
+          ranges.push(String(start), String(end));
+        } else {
+          ranges.push(`${start}-${end}`);
+        }
+        if (i < sorted.length) {
+          start = sorted[i];
+          end = sorted[i];
+        }
+      }
+    }
+
+    return ranges.join(',');
+  };
+
   useEffect(() => {
     if (event) {
       // Handle loading existing event
+      const jobNums = event.jobNumbers || [];
       if (event.forAll) {
         // If the event is for all technicians, set a special "All Technicians" option
         setFormData({
@@ -76,7 +138,7 @@ function EventDialog({
           startTime: moment(event.startTime),
           endTime: moment(event.endTime),
           label: event.label ?? 'None',
-          jobNumbers: event.jobNumbers || [],
+          jobNumbers: jobNums,
           Technicians: [{ id: 'all', name: 'All Technicians', isAllOption: true }]
         });
       } else {
@@ -86,10 +148,13 @@ function EventDialog({
           startTime: moment(event.startTime),
           endTime: moment(event.endTime),
           label: event.label ?? 'None',
-          jobNumbers: event.jobNumbers || []
+          jobNumbers: jobNums
         });
       }
-      
+
+      // Set the input field to formatted job numbers
+      setJobNumberInput(formatJobNumbers(jobNums));
+
       // Clear errors when editing existing event
       setErrors({
         name: '',
@@ -103,10 +168,10 @@ function EventDialog({
       let initialJobNumbers = [];
       let initialTechs = [];
       if (newEvent.view === "jobs") {
-        initialJobNumbers = [newEvent.resourceId]
+        initialJobNumbers = [newEvent.resourceId];
       } else {
-        const techId = newEvent.resourceId
-        initialTechs = technicians.filter(t => t.id === techId)
+        const techId = newEvent.resourceId;
+        initialTechs = technicians.filter(t => t.id === techId);
       }
       setFormData({
         ...formData,
@@ -116,6 +181,9 @@ function EventDialog({
         allDay: newEvent.allDay,
         Technicians: initialTechs
       });
+
+      // Set the input field to formatted job numbers
+      setJobNumberInput(formatJobNumbers(initialJobNumbers));
     }
   }, [event, newEvent]);
 
@@ -193,11 +261,23 @@ function EventDialog({
     setFormData({ ...formData, [name]: checked });
   };
 
-  const handleJobNumbersChange = (event, newValue) => {
-    setFormData({ ...formData, jobNumbers: newValue });
-    // Clear error when job numbers are changed
-    if (errors.jobNumbers) {
-      setErrors({ ...errors, jobNumbers: '' });
+  const handleJobNumberInputChange = (e) => {
+    const input = e.target.value;
+    setJobNumberInput(input);
+
+    // Parse and validate the input
+    const parsed = parseJobNumbers(input);
+    if (parsed === null && input.trim() !== '') {
+      // Invalid input
+      setErrors({ ...errors, jobNumbers: `Invalid format. Use ranges (1-6) or comma-separated numbers. Max is ${maxJobNumber}.` });
+    } else {
+      // Valid input or empty
+      setFormData({ ...formData, jobNumbers: parsed || [] });
+      if (parsed && parsed.length > 0) {
+        setErrors({ ...errors, jobNumbers: '' });
+      } else if (input.trim() === '') {
+        setErrors({ ...errors, jobNumbers: 'At least one job number is required' });
+      }
     }
   };
 
@@ -535,36 +615,18 @@ function EventDialog({
             ))}
           </TextField>
           
-          {/* Replace single job number dropdown with multi-select */}
-          <Autocomplete
-            multiple
-            options={throughThirty}
-            value={formData.jobNumbers || []}
-            onChange={handleJobNumbersChange}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => {
-                const { key, ...tagProps } = getTagProps({ index });
-                return (
-                  <Chip 
-                    key={key}
-                    variant="outlined" 
-                    label={option} 
-                    {...tagProps} 
-                  />
-                );
-              })
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                margin="dense"
-                label="Job Numbers"
-                placeholder="Select job numbers"
-                error={!!errors.jobNumbers}
-                helperText={errors.jobNumbers}
-                required
-              />
-            )}
+          <TextField
+            margin="dense"
+            name="jobNumbers"
+            label="Job Numbers"
+            type="text"
+            fullWidth
+            value={jobNumberInput}
+            onChange={handleJobNumberInputChange}
+            error={!!errors.jobNumbers}
+            helperText={errors.jobNumbers || 'Enter ranges (e.g., 1-6,8,10)'}
+            placeholder="e.g., 1-6,8,10"
+            required
             sx={{ mt: 1, mb: 1 }}
           />
         </DialogContent>

@@ -10,6 +10,7 @@ const { router: eventRoutes} = require('./routes/events');
 const { router: scheduleRoutes} = require('./routes/schedules');
 const { router: backupRoutes} = require('./routes/backup');
 const refreshRoutes = require('./routes/refresh');
+const settingsRoutes = require('./routes/settings');
 const loggingMiddleware = require('./middleware/logging');
 const backupService = require('./services/backupService');
 
@@ -37,6 +38,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.get('/print', (req, res) => {
   const clientIp = req.ip || req.socket.remoteAddress;
