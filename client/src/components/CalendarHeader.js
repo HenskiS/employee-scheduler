@@ -13,19 +13,26 @@ const CalendarHeader = ({ view, onViewChange, selectedDate, onDateChange }) => {
     }
   };
 
+  const handleViewChange = (_event, newView) => {
+    // Prevent deselecting the current view (newView would be null)
+    if (newView !== null) {
+      onViewChange(newView);
+    }
+  };
+
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 2, 
-        padding: "8px 0px", 
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        padding: "8px 0px",
         borderRadius: 1
       }}>
         <ToggleButtonGroup
           value={view}
           exclusive
-          onChange={(event, newView) => onViewChange(newView)}
+          onChange={handleViewChange}
           aria-label="calendar view"
           size="small"
         >
@@ -34,6 +41,9 @@ const CalendarHeader = ({ view, onViewChange, selectedDate, onDateChange }) => {
           </ToggleButton>
           <ToggleButton value="techs" aria-label="techs view">
             Techs
+          </ToggleButton>
+          <ToggleButton value="doctors" aria-label="doctors view">
+            Doctors
           </ToggleButton>
         </ToggleButtonGroup>
 

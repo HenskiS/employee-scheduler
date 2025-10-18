@@ -23,19 +23,46 @@ const MyCalendar = () => {
   const [conflictError, setConflictError] = useState(null);
   const [generalError, setGeneralError] = useState(null);
 
-  // Modified to handle both job numbers and technician resources
+  // Modified to handle job numbers, technician, and doctor resources
   useEffect(() => {
-    let r;
+    let r = [];
     if (view === "jobs") {
       r = jobNumberOptions.map(num => ({ id: num, title: num }));
-    } else {
+    } else if (view === "techs") {
       r = technicians.map(technician => ({
         id: technician.id,
         title: technician.name
       }));
+    } else if (view === "doctors") {
+      // Extract unique doctors from events that have them AND are on the selected date
+      const startOfDay = moment(selectedDate).startOf('day');
+      const endOfDay = moment(selectedDate).endOf('day');
+
+      const doctorsMap = new Map();
+      events.forEach(event => {
+        if (event.Doctor && event.Doctor.id) {
+          // Check if event is on the selected date
+          const eventStart = moment(event.startTime);
+          const eventEnd = moment(event.endTime);
+
+          if ((eventStart.isSameOrAfter(startOfDay) && eventStart.isSameOrBefore(endOfDay)) ||
+              (eventEnd.isSameOrAfter(startOfDay) && eventEnd.isSameOrBefore(endOfDay)) ||
+              (eventStart.isBefore(startOfDay) && eventEnd.isAfter(endOfDay))) {
+            const doctorKey = event.Doctor.id;
+            if (!doctorsMap.has(doctorKey)) {
+              const doctorName = event.Doctor.customer || 'Unknown Doctor';
+              doctorsMap.set(doctorKey, {
+                id: doctorKey,
+                title: doctorName
+              });
+            }
+          }
+        }
+      });
+      r = Array.from(doctorsMap.values());
     }
     setResources(r);
-  }, [view, technicians, jobNumberOptions]);
+  }, [view, technicians, jobNumberOptions, events, selectedDate]);
 
   useEffect(() => {
     const start = moment(selectedDate).startOf('day');
@@ -178,7 +205,7 @@ const MyCalendar = () => {
             Doctor: event.Doctor
           }];
         }
-        
+
         return jobNumbers.map(jobNumber => ({
           id: event.id,
           title: event.name,
@@ -190,7 +217,7 @@ const MyCalendar = () => {
           label: event.label,
           Doctor: event.Doctor
         }));
-      } else {
+      } else if (view === "techs") {
         // Create an event instance for each technician assigned to the event
         return (event.Technicians || []).map(technician => ({
           id: event.id,
@@ -203,7 +230,25 @@ const MyCalendar = () => {
           label: event.label,
           Doctor: event.Doctor
         }));
+      } else if (view === "doctors") {
+        // Create an event instance for the doctor assigned to the event
+        if (event.Doctor && event.Doctor.id) {
+          return [{
+            id: event.id,
+            title: event.name,
+            start: new Date(event.startTime),
+            end: new Date(event.endTime),
+            description: event.description,
+            resourceId: event.Doctor.id, // Use doctor ID as resource ID
+            allDay: event.allDay,
+            label: event.label,
+            Doctor: event.Doctor
+          }];
+        }
+        // If no doctor, don't show the event in doctors view
+        return [];
       }
+      return [];
     });
   };
 
@@ -269,33 +314,39 @@ const MyCalendar = () => {
           onClearGeneralError={() => setGeneralError(null)}
         />
       )}
-      <Calendar
-        localizer={localizer}
-        events={processEvents()}
-        components={{
-          event: EventComponent
-        }}
-        startAccessor="start"
-        endAccessor="end"
-        view={currentView}
-        views={['day', 'agenda']}
-        onView={handleViewChange}
-        onNavigate={handleNavigate}
-        step={60}
-        length={0}
-        timeslots={1}
-        min={new Date(2024, 0, 1, 7, 0, 0)}
-        max={new Date(2024, 0, 1, 21, 0, 0)}
-        date={selectedDate}
-        //onNavigate={(date) => setSelectedDate(date)}
-        resources={resources}
-        resourceIdAccessor="id"
-        resourceTitleAccessor="title"
-        onSelectEvent={handleSelectEvent}
-        onSelectSlot={handleSelectSlot}
-        selectable={true}
-        style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'auto' }}
-      />
+      {(view === "doctors" && resources.length === 0) ? (
+        <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+          No doctors scheduled for this day
+        </div>
+      ) : (
+        <Calendar
+          localizer={localizer}
+          events={processEvents()}
+          components={{
+            event: EventComponent
+          }}
+          startAccessor="start"
+          endAccessor="end"
+          view={currentView}
+          views={['day', 'agenda']}
+          onView={handleViewChange}
+          onNavigate={handleNavigate}
+          step={60}
+          length={0}
+          timeslots={1}
+          min={new Date(2024, 0, 1, 7, 0, 0)}
+          max={new Date(2024, 0, 1, 21, 0, 0)}
+          date={selectedDate}
+          //onNavigate={(date) => setSelectedDate(date)}
+          resources={resources}
+          resourceIdAccessor="id"
+          resourceTitleAccessor="title"
+          onSelectEvent={handleSelectEvent}
+          onSelectSlot={handleSelectSlot}
+          selectable={true}
+          style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'auto' }}
+        />
+      )}
     </div>
   );
 };
