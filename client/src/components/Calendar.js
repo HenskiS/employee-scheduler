@@ -160,6 +160,17 @@ const MyCalendar = () => {
     }
   };
 
+  const handleSaveCompletion = async (eventId, completionData) => {
+    try {
+      await axios.put(`/event-completions/${eventId}`, completionData);
+      // Optionally refresh data to show updated completion info
+      refreshData();
+    } catch (error) {
+      console.error('Error saving completion data:', error);
+      throw error;
+    }
+  };
+
   const handleViewChange = (newView) => {
     setCurrentView(newView);
   };
@@ -308,6 +319,7 @@ const MyCalendar = () => {
           onClose={handleCloseDialog}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
+          onSaveCompletion={handleSaveCompletion}
           conflictError={conflictError}
           onClearConflicts={() => setConflictError(null)}
           generalError={generalError}

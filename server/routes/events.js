@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const sequelize = require('../config/database')
 const { Op } = require('sequelize')
-const {Event, Technician, Doctor} = require('../models/index');
+const {Event, Technician, Doctor, EventCompletion, Tag} = require('../models/index');
 const authMiddleware = require('../middleware/auth');
 const RRule = require('rrule').RRule;
 
@@ -524,6 +524,12 @@ router.post('/', authMiddleware, async (req, res) => {
       });
       await event.setTechnicians(techs, { transaction: t });
 
+      // Associate tags if provided
+      if (req.body.tags && Array.isArray(req.body.tags)) {
+        const tagIds = req.body.tags.map(tag => tag.id);
+        await event.setTags(tagIds, { transaction: t });
+      }
+
       // Create recurring events if needed
       if (isRecurring && recurrencePattern) {
         try {
@@ -588,7 +594,9 @@ const getEvents = async (start, end, filters = {}) => {
 
     // Build include array for associations
     const includeArray = [
-      { model: Doctor }
+      { model: Doctor },
+      { model: EventCompletion, as: 'completion', required: false },
+      { model: Tag, as: 'tags', through: { attributes: [] } }
     ];
 
     // Add technician filtering if provided
@@ -659,7 +667,9 @@ router.get('/:id', authMiddleware, async (req, res) => {
     const event = await Event.findByPk(req.params.id, {
       include: [
         { model: Technician, through: { attributes: [] } },
-        { model: Doctor }
+        { model: Doctor },
+        { model: EventCompletion, as: 'completion', required: false },
+        { model: Tag, as: 'tags', through: { attributes: [] } }
       ]
     });
     if (event) {
@@ -808,9 +818,15 @@ router.put('/:id', authMiddleware, async (req, res) => {
         if (updateType === 'single') {
           // Update only this event
           await event.update(req.body, { transaction: t });
-          
+
           if (req.body.Technicians) {
             await event.setTechnicians(req.body.Technicians.map(tech => tech.id), { transaction: t });
+          }
+
+          // Update tags if provided
+          if (req.body.tags && Array.isArray(req.body.tags)) {
+            const tagIds = req.body.tags.map(tag => tag.id);
+            await event.setTags(tagIds, { transaction: t });
           }
         } else if (updateType === 'future') {
           // Get recurrences

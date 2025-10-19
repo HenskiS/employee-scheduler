@@ -20,6 +20,7 @@ import {
   Chip,
 } from '@mui/material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
@@ -38,13 +39,15 @@ function EventDialog({
   conflictError,
   onClearConflicts,
   generalError,
-  onClearGeneralError
+  onClearGeneralError,
+  onSaveCompletion
 }) {
-  const { technicians, doctors, labels, jobNumberOptions, maxJobNumber } = useScheduling();
+  const { technicians, doctors, labels, tags, maxJobNumber } = useScheduling();
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    officeNotes: '',
     startTime: moment(),
     endTime: moment().add(4, 'hour'),
     allDay: false,
@@ -53,7 +56,17 @@ function EventDialog({
     isRecurring: false,
     recurrencePattern: null,
     Technicians: [],
-    DoctorId: null
+    DoctorId: null,
+    confirmed: false,
+    confirmedAt: null,
+    tags: []
+  });
+
+  const [completionData, setCompletionData] = useState({
+    jobNotes: '',
+    clockInTime: null,
+    clockOutTime: null,
+    numberOfCases: ''
   });
 
   const [errors, setErrors] = useState({
@@ -139,6 +152,7 @@ function EventDialog({
           endTime: moment(event.endTime),
           label: event.label ?? 'None',
           jobNumbers: jobNums,
+          confirmedAt: event.confirmedAt ? moment(event.confirmedAt) : null,
           Technicians: [{ id: 'all', name: 'All Technicians', isAllOption: true }]
         });
       } else {
@@ -148,7 +162,8 @@ function EventDialog({
           startTime: moment(event.startTime),
           endTime: moment(event.endTime),
           label: event.label ?? 'None',
-          jobNumbers: jobNums
+          jobNumbers: jobNums,
+          confirmedAt: event.confirmedAt ? moment(event.confirmedAt) : null
         });
       }
 
@@ -162,6 +177,28 @@ function EventDialog({
         endTime: '',
         jobNumbers: ''
       });
+
+      // Load completion data if it exists
+      if (event.completion) {
+        setCompletionData({
+          jobNotes: event.completion.jobNotes || '',
+          clockInTime: event.completion.clockInTime
+            ? moment().startOf('day').add(moment.duration(event.completion.clockInTime))
+            : null,
+          clockOutTime: event.completion.clockOutTime
+            ? moment().startOf('day').add(moment.duration(event.completion.clockOutTime))
+            : null,
+          numberOfCases: event.completion.numberOfCases || ''
+        });
+      } else {
+        // Reset completion data if no completion exists
+        setCompletionData({
+          jobNotes: '',
+          clockInTime: null,
+          clockOutTime: null,
+          numberOfCases: ''
+        });
+      }
     } else if (newEvent) {
       // For new events, if view is jobs, resourceId is jobNumbers
       // if view is techs, resourceId is TechnicianId
@@ -281,12 +318,12 @@ function EventDialog({
     }
   };
 
-  const handleSubmit = (force = false) => {
+  const handleSubmit = async (force = false) => {
     if (!validateForm()) return;
-    
+
     // Check if "All Technicians" is selected
     const isForAll = formData.Technicians?.some(tech => tech.id === 'all');
-    
+
     // Prepare the data to be saved
     const eventData = {
       ...formData,
@@ -296,12 +333,23 @@ function EventDialog({
       // If "All Technicians" is selected, save an empty array for individual technicians
       Technicians: isForAll ? [] : formData.Technicians
     };
-    
+
     if (event?.isRecurring) {
       setRecurringAction('edit');
       setShowRecurringChoice(true);
     } else {
-      onSave(eventData, 'single', force);
+      await onSave(eventData, 'single', force);
+
+      // Save completion data if this is an existing event and onSaveCompletion is provided
+      if (event?.id && onSaveCompletion) {
+        const completionPayload = {
+          jobNotes: completionData.jobNotes,
+          clockInTime: completionData.clockInTime ? completionData.clockInTime.format('HH:mm:ss') : null,
+          clockOutTime: completionData.clockOutTime ? completionData.clockOutTime.format('HH:mm:ss') : null,
+          numberOfCases: completionData.numberOfCases ? parseInt(completionData.numberOfCases) : null
+        };
+        await onSaveCompletion(event.id, completionPayload);
+      }
     }
   };
 
@@ -507,7 +555,19 @@ function EventDialog({
             value={formData.description}
             onChange={handleInputChange}
           />
-          <Autocomplete 
+          <TextField
+            margin="dense"
+            name="officeNotes"
+            label="Office Notes (Internal Only)"
+            type="text"
+            fullWidth
+            multiline
+            rows={2}
+            value={formData.officeNotes}
+            onChange={handleInputChange}
+            helperText="These notes are for internal use only and will not appear on printed schedules"
+          />
+          <Autocomplete
             name="doctor"
             label="Doctor"
             options={doctors}
@@ -522,6 +582,40 @@ function EventDialog({
             sx={{margin: "5px 0px 12px 0px"}}
             renderInput={(params) => <TextField {...params} label="Doctor" />}
           />
+
+          {/* Confirmation Section */}
+          <Box sx={{ mt: 2, mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.confirmed}
+                  onChange={(e) => {
+                    const newConfirmed = e.target.checked;
+                    setFormData({
+                      ...formData,
+                      confirmed: newConfirmed,
+                      confirmedAt: newConfirmed ? moment() : null
+                    });
+                  }}
+                  name="confirmed"
+                />
+              }
+              label="Confirmed"
+            />
+            {formData.confirmed && (
+              <DateTimePicker
+                label="Confirmation Time"
+                value={formData.confirmedAt}
+                onChange={(time) => setFormData({ ...formData, confirmedAt: time })}
+                slotProps={{
+                  textField: {
+                    size: 'small'
+                  }
+                }}
+              />
+            )}
+          </Box>
+
           <TechnicianSelector
             selectedTechnicians={formData.Technicians}
             availableTechnicians={technicians}
@@ -629,6 +723,98 @@ function EventDialog({
             required
             sx={{ mt: 1, mb: 1 }}
           />
+
+          {/* Completion Section - Only for existing events */}
+          {event && (
+            <>
+              <Divider sx={{ my: 3 }}>
+                <Chip label="Post-Event Completion" />
+              </Divider>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                These fields are for recording information after the job is completed.
+              </Typography>
+
+              <TextField
+                margin="dense"
+                name="jobNotes"
+                label="Job Notes"
+                type="text"
+                fullWidth
+                multiline
+                rows={3}
+                value={completionData.jobNotes || ''}
+                onChange={(e) => setCompletionData({ ...completionData, jobNotes: e.target.value })}
+                helperText="Notes about how the job went, any issues, etc."
+              />
+
+              {/* Tags Section */}
+              <Autocomplete
+                multiple
+                options={tags}
+                getOptionLabel={(option) => option.name}
+                value={formData.tags || []}
+                onChange={(event, newValue) => {
+                  setFormData({ ...formData, tags: newValue });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Tags"
+                    helperText="Add tags to categorize post-event notes"
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      key={option.id}
+                      label={option.name}
+                      {...getTagProps({ index })}
+                      style={{ backgroundColor: option.color, color: '#fff' }}
+                    />
+                  ))
+                }
+                sx={{ mt: 2, mb: 2 }}
+              />
+
+              <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 200px' }}>
+                  <TimePicker
+                    label="Clock In Time"
+                    value={completionData.clockInTime}
+                    onChange={(time) => setCompletionData({ ...completionData, clockInTime: time })}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true
+                      }
+                    }}
+                  />
+                </Box>
+                <Box sx={{ flex: '1 1 200px' }}>
+                  <TimePicker
+                    label="Clock Out Time"
+                    value={completionData.clockOutTime}
+                    onChange={(time) => setCompletionData({ ...completionData, clockOutTime: time })}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true
+                      }
+                    }}
+                  />
+                </Box>
+                <Box sx={{ flex: '1 1 200px' }}>
+                  <TextField
+                    name="numberOfCases"
+                    label="Number of Cases"
+                    type="number"
+                    fullWidth
+                    value={completionData.numberOfCases}
+                    onChange={(e) => setCompletionData({ ...completionData, numberOfCases: e.target.value })}
+                  />
+                </Box>
+              </Box>
+            </>
+          )}
         </DialogContent>
         <DialogActions>
           {event && (

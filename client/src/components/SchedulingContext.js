@@ -45,6 +45,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
     const [technicians, setTechnicians] = useState([]);
     const [users, setUsers] = useState([]);
     const [events, setEvents] = useState([]);
+    const [tags, setTags] = useState([]);
     const [maxJobNumber, setMaxJobNumber] = useState(30);
     const [jobNumberOptions, setJobNumberOptions] = useState([]);
     const [dateRange, setDateRange] = useState({
@@ -77,6 +78,23 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
         };
 
         fetchSettings();
+    }, [token]);
+
+    // Fetch tags when authenticated
+    useEffect(() => {
+        if (!token) return;
+
+        const fetchTags = async () => {
+            try {
+                const response = await axios.get('/tags');
+                setTags(response.data);
+            } catch (err) {
+                console.error('Error fetching tags:', err);
+                setTags([]);
+            }
+        };
+
+        fetchTags();
     }, [token]);
 
     // Watch for token changes
@@ -217,6 +235,7 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             technicians,
             users,
             events,
+            tags,
             maxJobNumber,
             jobNumberOptions,
             loading,

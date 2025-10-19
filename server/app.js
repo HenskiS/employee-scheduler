@@ -11,6 +11,8 @@ const { router: scheduleRoutes} = require('./routes/schedules');
 const { router: backupRoutes} = require('./routes/backup');
 const refreshRoutes = require('./routes/refresh');
 const settingsRoutes = require('./routes/settings');
+const eventCompletionRoutes = require('./routes/eventCompletions');
+const tagRoutes = require('./routes/tags');
 const loggingMiddleware = require('./middleware/logging');
 const backupService = require('./services/backupService');
 
@@ -36,6 +38,8 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/event-completions', eventCompletionRoutes);
+app.use('/api/tags', tagRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/settings', settingsRoutes);

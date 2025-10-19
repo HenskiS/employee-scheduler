@@ -4,6 +4,8 @@ const DoctorEmail = require('./DoctorEmail');
 const Technician = require('./Technician');
 const User = require('./User');
 const Event = require('./Event');
+const EventCompletion = require('./EventCompletion');
+const Tag = require('./Tag');
 
 // Doctor-Email relationship
 Doctor.hasMany(DoctorEmail, { as: 'emails' });
@@ -30,10 +32,20 @@ Technician.belongsToMany(Event, { through: 'EventTechnicians' });
 Event.belongsTo(Doctor);
 Doctor.hasMany(Event);
 
+// Event-EventCompletion relationship (one-to-one)
+Event.hasOne(EventCompletion, { as: 'completion', foreignKey: 'EventId' });
+EventCompletion.belongsTo(Event, { foreignKey: 'EventId' });
+
+// Event-Tag relationship (many-to-many)
+Event.belongsToMany(Tag, { through: 'EventTags', as: 'tags' });
+Tag.belongsToMany(Event, { through: 'EventTags', as: 'events' });
+
 module.exports = {
   Doctor,
   DoctorEmail,
   Technician,
   User,
-  Event
+  Event,
+  EventCompletion,
+  Tag
 };

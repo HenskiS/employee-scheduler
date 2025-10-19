@@ -9,6 +9,10 @@ const Event = sequelize.define('Event', {
   description: {
     type: DataTypes.TEXT
   },
+  officeNotes: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   startTime: {
     type: DataTypes.DATE,
     allowNull: false
@@ -56,6 +60,15 @@ const Event = sequelize.define('Event', {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
     allowNull: false
+  },
+  confirmed: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
+  },
+  confirmedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {paranoid: true, timestamps: true});
 
