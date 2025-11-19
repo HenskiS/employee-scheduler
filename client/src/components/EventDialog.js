@@ -246,9 +246,13 @@ function EventDialog({
       isValid = false;
     }
 
-    // Validate job numbers
-    if (!formData.jobNumbers || formData.jobNumbers.length === 0) {
-      newErrors.jobNumbers = 'At least one job number is required';
+    // Validate that at least one of: job numbers, technicians, or doctor is present
+    const hasJobNumbers = formData.jobNumbers && formData.jobNumbers.length > 0;
+    const hasTechnicians = formData.Technicians && formData.Technicians.length > 0;
+    const hasDoctor = formData.DoctorId !== null && formData.DoctorId !== undefined;
+
+    if (!hasJobNumbers && !hasTechnicians && !hasDoctor) {
+      newErrors.jobNumbers = 'At least one of the following is required: job number(s), technician(s), or a doctor';
       isValid = false;
     }
 
@@ -310,10 +314,12 @@ function EventDialog({
     } else {
       // Valid input or empty
       setFormData({ ...formData, jobNumbers: parsed || [] });
+      // Clear error when valid input is provided
       if (parsed && parsed.length > 0) {
         setErrors({ ...errors, jobNumbers: '' });
       } else if (input.trim() === '') {
-        setErrors({ ...errors, jobNumbers: 'At least one job number is required' });
+        // Don't show error for empty job numbers since they're now optional
+        setErrors({ ...errors, jobNumbers: '' });
       }
     }
   };
@@ -720,7 +726,6 @@ function EventDialog({
             error={!!errors.jobNumbers}
             helperText={errors.jobNumbers || 'Enter ranges (e.g., 1-6,8,10)'}
             placeholder="e.g., 1-6,8,10"
-            required
             sx={{ mt: 1, mb: 1 }}
           />
 
