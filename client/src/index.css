@@ -412,6 +412,83 @@ td:hover {
 }
 @media print {
   .no-print { display: none !important; }
+
+  /* Agenda print optimizations - fit more rows per page */
+  .agenda-header {
+    padding: 3px 6px;
+    font-size: 0.75rem;
+  }
+
+  .agenda-date {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    vertical-align: top;
+  }
+
+  .agenda-time {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    vertical-align: top;
+  }
+
+  .agenda-event {
+    padding: 1px 3px;
+    vertical-align: top;
+  }
+
+  .agenda-details {
+    padding: 1px 3px;
+    vertical-align: top;
+  }
+
+  .agenda-event-content {
+    gap: 0;
+  }
+
+  .agenda-event-details {
+    gap: 0;
+  }
+
+  .agenda-event-title {
+    font-size: 0.75rem;
+    margin-right: 4px;
+    margin-bottom: 0;
+    line-height: 1.2;
+  }
+
+  .agenda-event-description,
+  .agenda-event-label {
+    font-size: 0.7rem;
+    line-height: 1.2;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .agenda-event-doctor-name,
+  .agenda-event-doctor-address,
+  .agenda-event-doctor-phone {
+    font-size: 0.7rem;
+    line-height: 1.2;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .agenda-event-doctor-details {
+    font-size: 0.7rem;
+    line-height: 1.2;
+    gap: 0;
+  }
+
+  .agenda-event-color-indicator {
+    margin-right: 4px;
+  }
+
+  .agenda-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 }
 /* @media print {
   .calendar-container {
