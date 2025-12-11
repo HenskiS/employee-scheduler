@@ -40,6 +40,18 @@ EventCompletion.belongsTo(Event, { foreignKey: 'EventId' });
 Event.belongsToMany(Tag, { through: 'EventTags', as: 'tags' });
 Tag.belongsToMany(Event, { through: 'EventTags', as: 'events' });
 
+// Doctor-Tag relationship (many-to-many)
+Doctor.belongsToMany(Tag, { through: 'DoctorTags', as: 'tags' });
+Tag.belongsToMany(Doctor, { through: 'DoctorTags', as: 'doctors' });
+
+// Technician-Tag relationship (many-to-many)
+Technician.belongsToMany(Tag, { through: 'TechnicianTags', as: 'tags' });
+Tag.belongsToMany(Technician, { through: 'TechnicianTags', as: 'technicians' });
+
+// User-Tag relationship (many-to-many)
+User.belongsToMany(Tag, { through: 'UserTags', as: 'tags' });
+Tag.belongsToMany(User, { through: 'UserTags', as: 'users' });
+
 module.exports = {
   Doctor,
   DoctorEmail,

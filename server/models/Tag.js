@@ -11,6 +11,12 @@ const Tag = sequelize.define('Tag', {
     type: DataTypes.STRING,
     allowNull: true,
     defaultValue: '#808080'
+  },
+  appliesTo: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: ['event'],
+    comment: 'Array of entity types this tag can be applied to: event, doctor, technician, user'
   }
 }, {
   timestamps: true
