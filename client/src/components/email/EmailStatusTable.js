@@ -13,9 +13,9 @@ import { getStatusIcon } from './StatusIcons';
 
 /**
  * Table component for displaying detailed email status information
- * 
+ *
  * @param {Object} props - Component props
- * @param {Array} props.technicianStatus - Array of technician status objects
+ * @param {Array} props.technicianStatus - Array of recipient status objects
  */
 const EmailStatusTable = ({ technicianStatus }) => {
   return (
@@ -24,45 +24,52 @@ const EmailStatusTable = ({ technicianStatus }) => {
         <TableHead>
           <TableRow>
             <TableCell width="5%">Status</TableCell>
-            <TableCell>Technician</TableCell>
+            <TableCell>Recipient</TableCell>
             <TableCell>Details</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {technicianStatus.map((tech) => (
-            <TableRow 
-              key={tech.technicianId}
-              sx={{ 
+          {technicianStatus.map((recipient) => (
+            <TableRow
+              key={recipient.recipientId || recipient.technicianId}
+              sx={{
                 '&:nth-of-type(odd)': { backgroundColor: 'rgba(0, 0, 0, 0.03)' },
-                backgroundColor: tech.status === 'failed' 
-                  ? 'rgba(244, 67, 54, 0.1)' 
-                  : tech.status === 'completed'
+                backgroundColor: recipient.status === 'failed'
+                  ? 'rgba(244, 67, 54, 0.1)'
+                  : recipient.status === 'completed'
                     ? 'rgba(76, 175, 80, 0.1)'
-                    : tech.status === 'processing'
+                    : recipient.status === 'processing'
                       ? 'rgba(33, 150, 243, 0.1)'
                       : undefined
               }}
             >
               <TableCell>
-                {getStatusIcon(tech.status)}
+                {getStatusIcon(recipient.status)}
               </TableCell>
               <TableCell>
-                {tech.details?.technicianName || `Technician ${tech.technicianId}`}
+                <Typography variant="body2">
+                  {recipient.email || recipient.details?.technicianName || recipient.recipientName || `Recipient ${recipient.recipientId || recipient.technicianId}`}
+                </Typography>
+                {recipient.email && (recipient.recipientName || recipient.details?.technicianName) && (
+                  <Typography variant="caption" color="text.secondary">
+                    {recipient.recipientName || recipient.details?.technicianName}
+                  </Typography>
+                )}
               </TableCell>
               <TableCell>
-                {tech.status === 'pending' && 'Waiting to process...'}
-                {tech.status === 'processing' && 'Generating and sending email...'}
-                {tech.status === 'completed' && (
+                {recipient.status === 'pending' && 'Waiting to process...'}
+                {recipient.status === 'processing' && 'Generating and sending email...'}
+                {recipient.status === 'completed' && (
                   <Typography variant="body2" color="success.main">
                     Email sent successfully
-                    {tech.details?.messageId && 
-                      ` (ID: ${tech.details.messageId.substring(0, 8)}...)`
+                    {recipient.details?.messageId &&
+                      ` (ID: ${recipient.details.messageId.substring(0, 8)}...)`
                     }
                   </Typography>
                 )}
-                {tech.status === 'failed' && (
+                {recipient.status === 'failed' && (
                   <Typography variant="body2" color="error">
-                    {tech.details?.error || 'Failed to send email'}
+                    {recipient.details?.error || 'Failed to send email'}
                   </Typography>
                 )}
               </TableCell>

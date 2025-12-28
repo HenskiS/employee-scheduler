@@ -31,8 +31,8 @@ const sendSchedulePdf = async (recipientEmail, pdfBuffer, employeeName, subject,
     try {
         // Validate email first
         if (!validateEmail(recipientEmail)) {
-            return { 
-                success: false, 
+            return {
+                success: false,
                 error: `Invalid email address: ${recipientEmail}`
             };
         }
@@ -40,8 +40,8 @@ const sendSchedulePdf = async (recipientEmail, pdfBuffer, employeeName, subject,
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: recipientEmail,
-            subject: subject || 'Your Schedule',
-            text: message || `Hello ${employeeName},\n\nPlease find attached your schedule.\n\nBest regards,\nManagement`,
+            subject: subject || '',
+            text: message || '',
             attachments: [{
                 filename: 'schedule.pdf',
                 content: pdfBuffer

@@ -39,17 +39,19 @@ const EmailOptionsForm = ({
         rows={3}
       />
       
-      <Box>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={includeAllEvents}
-              onChange={() => setIncludeAllEvents(!includeAllEvents)}
-            />
-          }
-          label="Include events for All"
-        />
-      </Box>
+      {includeAllEvents !== undefined && setIncludeAllEvents !== undefined && (
+        <Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includeAllEvents}
+                onChange={() => setIncludeAllEvents(!includeAllEvents)}
+              />
+            }
+            label="Include events for All"
+          />
+        </Box>
+      )}
     </Box>
   );
 };

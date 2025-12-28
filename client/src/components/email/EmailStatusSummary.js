@@ -12,59 +12,63 @@ const EmailStatusSummary = ({ status }) => {
   // Calculate progress percentage
   const getProgressPercentage = () => {
     if (!status) return 0;
-    return (status.processed / status.totalTechnicians) * 100;
+    const total = status.totalRecipients || status.totalTechnicians || 0;
+    if (total === 0) return 0;
+    return (status.processed / total) * 100;
   };
+
+  const totalRecipients = status.totalRecipients || status.totalTechnicians || 0;
 
   return (
     <>
       {/* Summary Cards */}
-      <Box sx={{ 
-        display: 'flex', 
-        flexWrap: 'wrap', 
-        gap: 2, 
+      <Box sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 2,
         justifyContent: 'space-between',
-        mb: 3 
+        mb: 3
       }}>
-        <StatusCard 
-          title="Total" 
-          value={status.totalTechnicians} 
-          color="#e0e0e0" 
+        <StatusCard
+          title="Total"
+          value={totalRecipients}
+          color="#e0e0e0"
         />
-        <StatusCard 
-          title="Processed" 
-          value={status.processed} 
-          color="#e3f2fd" 
+        <StatusCard
+          title="Processed"
+          value={status.processed}
+          color="#e3f2fd"
         />
-        <StatusCard 
-          title="Succeeded" 
-          value={status.succeeded} 
-          color="#e8f5e9" 
+        <StatusCard
+          title="Succeeded"
+          value={status.succeeded}
+          color="#e8f5e9"
         />
-        <StatusCard 
-          title="Failed" 
-          value={status.failed} 
-          color="#ffebee" 
+        <StatusCard
+          title="Failed"
+          value={status.failed}
+          color="#ffebee"
         />
-        <StatusCard 
-          title="In Progress" 
-          value={status.inProgress} 
-          color="#ede7f6" 
+        <StatusCard
+          title="In Progress"
+          value={status.inProgress}
+          color="#ede7f6"
         />
       </Box>
-      
+
       {/* Progress Bar */}
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
           <Typography variant="body2">
-            Progress: {status.processed} of {status.totalTechnicians} emails
+            Progress: {status.processed} of {totalRecipients} emails
           </Typography>
           <Typography variant="body2">
             {Math.round(getProgressPercentage())}%
           </Typography>
         </Box>
-        <LinearProgress 
-          variant="determinate" 
-          value={getProgressPercentage()} 
+        <LinearProgress
+          variant="determinate"
+          value={getProgressPercentage()}
           sx={{ height: 10, borderRadius: 5 }}
         />
       </Box>

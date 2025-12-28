@@ -203,6 +203,8 @@ td:hover {
   padding: 4px;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   page-break-inside: avoid;
   break-inside: avoid;
 }
@@ -210,7 +212,7 @@ td:hover {
 .calendar-date {
   font-size: 0.875rem;
   color: #333;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   flex-shrink: 0;
 }
 
@@ -226,7 +228,7 @@ td:hover {
 .calendar-events {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   flex-grow: 1;
   overflow-y: auto;
 }
@@ -267,6 +269,25 @@ td:hover {
   page-break-after: always;
 }
 
+.print-page-header {
+  text-align: center;
+  margin-bottom: 8px;
+  padding-top: 4px;
+}
+
+.print-company-header {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.print-custom-header {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #4a5568;
+}
+
 .print-cal-month,
 .print-cal-week,
 .print-cal-agenda {
@@ -277,7 +298,7 @@ td:hover {
 }
 
 .print-event-text-container {
-  margin: 2px 0;
+  margin: 0.5px 0;
   width: 100%;
 }
 
@@ -333,25 +354,30 @@ td:hover {
   border-top: 1px solid #e2e8f0;
 }
 .agenda-date {
-  padding: 4px 12px;
-  vertical-align: top;
+  padding: 2px 8px;
+  vertical-align: middle;
   font-size: 0.875rem;
   color: #4a5568;
 }
 
 .agenda-time {
-  padding: 4px 12px;
+  padding: 2px 8px;
+  vertical-align: middle;
   font-size: 0.875rem;
   color: #4a5568;
 }
 .agenda-event {
-  padding: 2px 6px;
+  padding: 1px 4px;
+  vertical-align: middle;
   page-break-inside: avoid;
   break-inside: avoid;
 }
 .agenda-event-content {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  line-height: 1.1;
+  margin: 0;
+  padding: 0;
 }
 .agenda-event-color-indicator {
   width: 4px;
@@ -362,11 +388,17 @@ td:hover {
 .agenda-event-details {
   flex: 1;
   min-width: 0;
+  line-height: 1.2;
 }
 .agenda-event-title {
   font-size: 0.875rem;
   font-weight: 500;
   margin-right: 8px;
+  line-height: 1;
+  margin-top: 0;
+  margin-bottom: 0;
+  display: inline-block;
+  vertical-align: top;
 }
 .agenda-event-description {
   font-size: 0.75rem;
@@ -376,7 +408,15 @@ td:hover {
 .agenda-event-label {
   font-size: 0.75rem;
   color: #718096;
-  /* margin-top: 2px; */
+  margin-top: 0;
+  line-height: 1.2;
+}
+.agenda-event-office-notes {
+  font-size: 0.75rem;
+  color: #e53e3e;
+  margin-top: 0;
+  line-height: 1.2;
+  font-style: italic;
 }
 .agenda-event-doctor-name,
 .agenda-event-doctor-address,

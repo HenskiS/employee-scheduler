@@ -4,7 +4,7 @@ import Calendar from './CustomPrintCalendar';
 import { useScheduling } from './SchedulingContext';
 import { Button } from '@mui/material';
 
-const PrintHandler = ({events = [], view = "month", dateRange, close, filterParams, onEdit}) => {
+const PrintHandler = ({events = [], view = "month", dateRange, close, filterParams, onEdit, onEmail}) => {
     const { colorMap, labels } = useScheduling();
 
     const EventComponent = ({ event, onClick }) => {
@@ -181,6 +181,11 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                 <Button onClick={onEdit} variant="outlined" className="print-button">
                     Edit
                 </Button>
+                {onEmail && (
+                    <Button onClick={onEmail} variant="outlined" className="print-button">
+                        Email
+                    </Button>
+                )}
                 <Button onClick={handlePrint} variant="outlined" className="print-button">
                     Print
                 </Button>
@@ -204,11 +209,17 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
 
                     return (
                         <div key={periodKey} className="cal-container print-cal-page">
-                            <CustomToolbar 
+                            <div className="print-page-header">
+                                <div className="print-company-header">Mobile Mohs, Inc.</div>
+                                {filterParams.customHeader && (
+                                    <div className="print-custom-header">{filterParams.customHeader}</div>
+                                )}
+                            </div>
+                            <CustomToolbar
                                 date={view === 'week'
                                     ? moment(periodKey).startOf('week').toDate()
                                     : moment(periodKey).toDate()
-                                } 
+                                }
                                 view={view}
                             />
                             <Calendar

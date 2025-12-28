@@ -105,6 +105,11 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
                           {event.Technicians.map(t => t.name).join(', ')}
                         </div>
                       )}
+                      {filterParams.displayOptions?.showOfficeNotes && event.officeNotes && (
+                        <div className="agenda-event-office-notes">
+                          {event.officeNotes}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </td>

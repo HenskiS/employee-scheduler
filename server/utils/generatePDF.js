@@ -85,7 +85,61 @@ const generateSchedulePDF = async (technicianId, startDate, endDate, includeAllE
   return await generatePDF(url, options);
 };
 
+/**
+ * Generates a print preview PDF with filter parameters
+ * @param {Object} params - URL parameters object
+ * @param {Object} [options] - PDF generation options
+ * @returns {Promise<Buffer>} PDF as a buffer
+ */
+const generatePrintPreviewPDF = async (params, options = {}) => {
+  // Build query string from params object
+  const queryParams = new URLSearchParams();
+
+  if (params.startDate) queryParams.append('start', params.startDate);
+  if (params.endDate) queryParams.append('end', params.endDate);
+  if (params.view) queryParams.append('view', params.view || 'agenda');
+
+  // Handle array parameters (labels, doctors, technicians)
+  if (params.labels && params.labels.length > 0) {
+    queryParams.append('labels', JSON.stringify(params.labels));
+  }
+
+  if (params.doctors && params.doctors.length > 0) {
+    queryParams.append('doctors', params.doctors.join(','));
+  }
+
+  if (params.technicians && params.technicians.length > 0) {
+    queryParams.append('technicians', params.technicians.join(','));
+  }
+
+  // Handle display options (compact format)
+  if (params.displayOptions) {
+    const opts = params.displayOptions;
+    const compactOpts = {
+      d: opts.showDescription,
+      l: opts.showLabel,
+      t: opts.showTechnicians,
+      on: opts.showOfficeNotes,
+      dn: opts.doctorInfo?.showName,
+      da: opts.doctorInfo?.showAddress,
+      dp: opts.doctorInfo?.showPhone
+    };
+    queryParams.append('opts', JSON.stringify(compactOpts));
+  }
+
+  // Handle custom header
+  if (params.customHeader) {
+    queryParams.append('header', encodeURIComponent(params.customHeader));
+  }
+
+  const url = `http://localhost:${process.env.PORT}/print?${queryParams.toString()}`;
+  console.log('Generating PDF with URL:', url);
+  console.log('PDF params:', JSON.stringify(params, null, 2));
+  return await generatePDF(url, options);
+};
+
 module.exports = {
   generatePDF,
-  generateSchedulePDF
+  generateSchedulePDF,
+  generatePrintPreviewPDF
 };

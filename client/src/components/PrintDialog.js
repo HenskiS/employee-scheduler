@@ -14,7 +14,8 @@ import {
   Box,
   Alert,
   FormControlLabel,
-  Typography
+  Typography,
+  TextField
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -26,6 +27,7 @@ const defaultDisplayOptions = {
   showDescription: true,
   showLabel: true,
   showTechnicians: true,
+  showOfficeNotes: false,
   doctorInfo: {
     showName: true,
     showAddress: false,
@@ -44,6 +46,7 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
   const [selectedView, setSelectedView] = useState('month');
   const [dateError, setDateError] = useState(false);
   const [displayOptions, setDisplayOptions] = useState(defaultDisplayOptions);
+  const [customHeader, setCustomHeader] = useState('');
 
   // Reset state only when shouldReset is true
   useEffect(() => {
@@ -56,6 +59,7 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
       setSelectedView('month');
       setDateError(false);
       setDisplayOptions(defaultDisplayOptions);
+      setCustomHeader('');
     }
   }, [shouldReset, open]);
 
@@ -78,6 +82,11 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
       // Set display options
       if (initialValues.displayOptions) {
         setDisplayOptions(initialValues.displayOptions);
+      }
+
+      // Set custom header
+      if (initialValues.customHeader) {
+        setCustomHeader(initialValues.customHeader);
       }
 
       // Match and set labels
@@ -170,6 +179,11 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
       params.set('technicians', technicianIds.join(','));
     }
 
+    // Add custom header if provided
+    if (customHeader) {
+      params.set('header', encodeURIComponent(customHeader));
+    }
+
     // Compress display options by only storing non-default values
     const defaultOpts = defaultDisplayOptions;
     const compactDisplayOptions = {};
@@ -182,6 +196,9 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
     }
     if (displayOptions.showTechnicians !== defaultOpts.showTechnicians) {
       compactDisplayOptions.t = displayOptions.showTechnicians;
+    }
+    if (displayOptions.showOfficeNotes !== defaultOpts.showOfficeNotes) {
+      compactDisplayOptions.on = displayOptions.showOfficeNotes;
     }
     if (displayOptions.doctorInfo.showName !== defaultOpts.doctorInfo.showName) {
       compactDisplayOptions.dn = displayOptions.doctorInfo.showName;
@@ -270,11 +287,23 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
               </Alert>
             )}
 
+            {/* Custom Header */}
+            <TextField
+              fullWidth
+              label="Custom Header (Optional)"
+              value={customHeader}
+              onChange={(e) => setCustomHeader(e.target.value)}
+              placeholder="e.g. MASTER_07.01"
+              helperText="Appears below 'Mobile Mohs, Inc.' on every page"
+              variant="outlined"
+              size="small"
+            />
+
             {/* Display Options */}
             <Box sx={{ mt: 1, mb: 1 }}>
               <Typography sx={{ fontSize: '1rem', mb: 0.5 }}>Display Options</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -301,6 +330,15 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
                       />
                     }
                     label={<Typography sx={{ fontSize: '1rem' }}>Technicians</Typography>}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={displayOptions.showOfficeNotes}
+                        onChange={() => handleDisplayOptionChange('showOfficeNotes')}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '1rem' }}>Office Notes</Typography>}
                   />
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

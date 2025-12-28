@@ -51,8 +51,9 @@ const EmailStatusDialog = ({ open, onClose, statusId }) => {
     
     // Set up polling every 2 seconds, but only if not all emails are processed yet
     let intervalId;
-    
-    if (!status || status.processed < status.totalTechnicians) {
+
+    const totalRecipients = status?.totalRecipients || status?.totalTechnicians || 0;
+    if (!status || status.processed < totalRecipients) {
       intervalId = setInterval(fetchStatus, 2000);
     }
     
@@ -128,7 +129,7 @@ const EmailStatusDialog = ({ open, onClose, statusId }) => {
             
             {/* Email Status Table Component */}
             <Typography variant="h6" sx={{ mb: 1 }}>Email Details</Typography>
-            <EmailStatusTable technicianStatus={status.technicianStatus} />
+            <EmailStatusTable technicianStatus={status.recipientStatus || status.technicianStatus} />
           </Box>
         ) : null}
       </DialogContent>

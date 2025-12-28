@@ -4,7 +4,10 @@ import { Box, Button, Typography } from '@mui/material';
 import { ArrowBack as BackIcon } from '@mui/icons-material';
 import PrintHandler from './PrintHandler';
 import PrintDialog from './PrintDialog';
+import EmailPrintDialog from './email/EmailPrintDialog';
+import EmailStatusDialog from './email/EmailStatusDialog';
 import { useScheduling } from './SchedulingContext';
+import axios from '../api/axios';
 
 const PrintPreview = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +17,9 @@ const PrintPreview = () => {
   const [loading, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [isEmailStatusDialogOpen, setIsEmailStatusDialogOpen] = useState(false);
+  const [emailStatusId, setEmailStatusId] = useState(null);
 
   // Create stable references for doctors and technicians to prevent unnecessary re-renders
   const doctorIds = useMemo(() => doctors.map(d => d.id).sort(), [doctors]);
@@ -53,6 +59,7 @@ const PrintPreview = () => {
         showDescription: true,
         showLabel: true,
         showTechnicians: true,
+        showOfficeNotes: false,
         doctorInfo: {
           showName: true,
           showAddress: false,
@@ -69,6 +76,7 @@ const PrintPreview = () => {
             showDescription: compactOpts.d !== undefined ? compactOpts.d : defaultOpts.showDescription,
             showLabel: compactOpts.l !== undefined ? compactOpts.l : defaultOpts.showLabel,
             showTechnicians: compactOpts.t !== undefined ? compactOpts.t : defaultOpts.showTechnicians,
+            showOfficeNotes: compactOpts.on !== undefined ? compactOpts.on : defaultOpts.showOfficeNotes,
             doctorInfo: {
               showName: compactOpts.dn !== undefined ? compactOpts.dn : defaultOpts.doctorInfo.showName,
               showAddress: compactOpts.da !== undefined ? compactOpts.da : defaultOpts.doctorInfo.showAddress,
@@ -89,6 +97,8 @@ const PrintPreview = () => {
       return defaultOpts;
     };
 
+    const customHeader = searchParams.get('header');
+
     return {
       startDate,
       endDate,
@@ -96,7 +106,8 @@ const PrintPreview = () => {
       labels: parseArray('labels'),
       doctors: parseArray('doctors'),
       technicians: parseArray('technicians'),
-      displayOptions: parseDisplayOptions()
+      displayOptions: parseDisplayOptions(),
+      customHeader: customHeader ? decodeURIComponent(customHeader) : ''
     };
   }, [searchParams]);
 
@@ -195,6 +206,39 @@ const PrintPreview = () => {
     setIsPrintDialogOpen(false);
   };
 
+  const handleEmail = () => {
+    setIsEmailDialogOpen(true);
+  };
+
+  const handleCloseEmailDialog = () => {
+    setIsEmailDialogOpen(false);
+  };
+
+  const handleSendEmail = (params) => {
+    console.log('Sending email with parameters:', params);
+    setIsEmailDialogOpen(false);
+
+    axios.post('/schedules/send-print-emails', params)
+      .then(response => {
+        console.log('Email sending process started:', response.data);
+
+        // Open the status dialog with the returned ID
+        if (response.data && response.data.id) {
+          setEmailStatusId(response.data.id);
+          setIsEmailStatusDialogOpen(true);
+        }
+      })
+      .catch(error => {
+        console.error('Error sending emails:', error);
+        // TODO: Show error alert to user
+      });
+  };
+
+  const handleCloseEmailStatusDialog = () => {
+    setIsEmailStatusDialogOpen(false);
+    setEmailStatusId(null);
+  };
+
   // Expand ID-only filter params to full objects for PrintDialog
   const expandedFilterParams = useMemo(() => {
     if (!filterParams) return filterParams;
@@ -256,6 +300,7 @@ const PrintPreview = () => {
           source: 'print'
         }}
         onEdit={handleEdit}
+        onEmail={handleEmail}
         showEditButton={true}
       />
 
@@ -265,6 +310,19 @@ const PrintPreview = () => {
         onPrint={handlePrintDialogSubmit}
         shouldReset={false}
         initialValues={expandedFilterParams}
+      />
+
+      <EmailPrintDialog
+        open={isEmailDialogOpen}
+        onClose={handleCloseEmailDialog}
+        onSend={handleSendEmail}
+        filterParams={filterParams}
+      />
+
+      <EmailStatusDialog
+        open={isEmailStatusDialogOpen}
+        onClose={handleCloseEmailStatusDialog}
+        statusId={emailStatusId}
       />
     </Box>
   );
