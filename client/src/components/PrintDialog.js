@@ -43,7 +43,7 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
   const [selectedLabels, setSelectedLabels] = useState([]);
   const [selectedDoctors, setSelectedDoctors] = useState([]);
   const [selectedTechnicians, setSelectedTechnicians] = useState([]);
-  const [selectedView, setSelectedView] = useState('month');
+  const [selectedView, setSelectedView] = useState('agenda');
   const [dateError, setDateError] = useState(false);
   const [displayOptions, setDisplayOptions] = useState(defaultDisplayOptions);
   const [customHeader, setCustomHeader] = useState('');
@@ -56,7 +56,7 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
       setSelectedLabels([]);
       setSelectedDoctors([]);
       setSelectedTechnicians([]);
-      setSelectedView('month');
+      setSelectedView('agenda');
       setDateError(false);
       setDisplayOptions(defaultDisplayOptions);
       setCustomHeader('');
@@ -245,9 +245,9 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
                 label="View"
                 MenuProps={MenuProps}
               >
+                <MenuItem value="agenda">Agenda</MenuItem>
                 <MenuItem value="month">Month</MenuItem>
                 <MenuItem value="week">Week</MenuItem>
-                <MenuItem value="agenda">Agenda</MenuItem>
               </Select>
             </FormControl>
 

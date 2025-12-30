@@ -276,14 +276,14 @@ td:hover {
 }
 
 .print-company-header {
-  font-size: 1.75rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #1a1a1a;
   margin-bottom: 2px;
 }
 
 .print-custom-header {
-  font-size: 1.25rem;
+  font-size: 1.75rem;
   font-weight: 500;
   color: #4a5568;
 }

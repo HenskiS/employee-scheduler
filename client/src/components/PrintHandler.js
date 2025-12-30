@@ -168,7 +168,7 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
     };
 
     return (
-        <div>
+        <div className={`print-view-${view}`}>
             <style>{`
                 @media print {
                     .no-print { display: none !important; }
