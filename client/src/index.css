@@ -271,8 +271,8 @@ td:hover {
 
 .print-page-header {
   text-align: center;
-  margin-bottom: 8px;
-  padding-top: 4px;
+  /* margin-bottom: 8px; */
+  /* padding-top: 4px; */
 }
 
 .print-company-header {
@@ -294,7 +294,7 @@ td:hover {
   font-size: 1.5rem;
   font-weight: 500;
   text-align: center;
-  margin-bottom: 16px;
+  /* margin-bottom: 16px; */
 }
 
 .print-event-text-container {
@@ -394,11 +394,11 @@ td:hover {
   font-size: 0.875rem;
   font-weight: 500;
   margin-right: 8px;
-  line-height: 1;
+  line-height: 1.2;
   margin-top: 0;
   margin-bottom: 0;
   display: inline-block;
-  vertical-align: top;
+  vertical-align: baseline;
 }
 .agenda-event-description {
   font-size: 0.75rem;
@@ -410,6 +410,8 @@ td:hover {
   color: #718096;
   margin-top: 0;
   line-height: 1.2;
+  display: inline-block;
+  vertical-align: baseline;
 }
 .agenda-event-office-notes {
   font-size: 0.75rem;
@@ -450,13 +452,54 @@ td:hover {
   /* color: #666; */
   white-space: pre-wrap;
 }
+/* Style the agenda table header that contains company/custom header */
+.agenda-print-header {
+  text-align: center;
+  padding: 12px 8px;
+  background-color: white !important;
+  border: none !important;
+  border-bottom: 1px solid #ddd !important;
+}
+
+.agenda-print-header .print-period-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* Hide the page header when viewing agenda (not needed since it's in table) */
+.print-cal-page:has(.calendar-agenda) .print-page-header {
+  display: none;
+}
+
 @media print {
   .no-print { display: none !important; }
+
+  /* Hide the fixed header during print - table header will repeat naturally */
+  .print-page-header {
+    display: none;
+  }
+
+  /* Ensure header cell has proper styling for print */
+  .agenda-print-header {
+    background-color: white !important;
+    border: none !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  /* Period title spacing */
+  .print-cal-month,
+  .print-cal-week,
+  .print-cal-agenda {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
 
   /* Agenda print optimizations - fit more rows per page */
   .agenda-header {
     padding: 3px 6px;
     font-size: 0.75rem;
+    background-color: #f7fafc;
   }
 
   .agenda-date {

@@ -49,18 +49,31 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
                     filterParams.displayOptions?.doctorInfo?.showPhone || 
                     filterParams.displayOptions?.doctorInfo?.showAddress;
 
+  const colSpan = 3 + (isDescription ? 1 : 0) + (isDocInfo ? 1 : 0);
+
   return (
     <div className="calendar-agenda">
       <table className="agenda-table">
         <thead>
           <tr>
+            <th colSpan={colSpan} className="agenda-print-header">
+              <div className="print-company-header">Mobile Mohs, Inc.</div>
+              {filterParams.customHeader && (
+                <div className="print-custom-header">{filterParams.customHeader}</div>
+              )}
+              {filterParams.periodTitle && (
+                <div className="print-period-title">{filterParams.periodTitle}</div>
+              )}
+            </th>
+          </tr>
+          <tr>
             <th className="agenda-header">Date</th>
             <th className="agenda-header">Time</th>
             <th className="agenda-header">Event</th>
-            {isDescription && 
+            {isDescription &&
                 <th className="agenda-header">Description</th>}
-            {isDocInfo && 
-              <th className="agenda-header">Doctor</th>}           
+            {isDocInfo &&
+              <th className="agenda-header">Doctor</th>}
           </tr>
         </thead>
         <tbody>
@@ -100,9 +113,9 @@ const AgendaView = ({ events, filterParams, onSelectEvent }) => {
                           {labels?.find(l => l.value === event.label)?.label}
                         </span>
                       )}
-                      {filterParams.displayOptions?.showTechnicians && event.Technicians && (
+                      {filterParams.displayOptions?.showTechnicians && (event.forAll || (event.Technicians && event.Technicians.length > 0)) && (
                         <div className="agenda-event-label">
-                          {event.Technicians.map(t => t.name).join(', ')}
+                          {' - '}{event.forAll ? 'All' : event.Technicians.map(t => t.name).join(', ')}
                         </div>
                       )}
                       {filterParams.displayOptions?.showOfficeNotes && event.officeNotes && (

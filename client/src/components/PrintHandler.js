@@ -200,12 +200,45 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                         if (view === 'week') {
                             const eventStart = moment(event.start);
                             const weekStart = moment(periodKey);
-                            return eventStart.isSameOrAfter(weekStart, 'day') && 
+                            return eventStart.isSameOrAfter(weekStart, 'day') &&
                                    eventStart.isBefore(weekStart.clone().add(1, 'week'), 'day');
                         } else {
                             return moment(event.start).format('YYYY-MM') === periodKey;
                         }
                     });
+
+                    // Compute period title for agenda view
+                    let periodTitle = '';
+                    if (view === 'agenda') {
+                        const currentMonth = moment(periodKey);
+                        const monthStart = currentMonth.clone().startOf('month');
+                        const monthEnd = currentMonth.clone().endOf('month');
+
+                        let displayStart = monthStart;
+                        let displayEnd = monthEnd;
+
+                        if (dateRange) {
+                            const rangeStart = moment(dateRange.start);
+                            const rangeEnd = moment(dateRange.end);
+
+                            if (rangeStart.isSame(currentMonth, 'month')) {
+                                displayStart = rangeStart;
+                            }
+                            if (rangeEnd.isSame(currentMonth, 'month')) {
+                                displayEnd = rangeEnd;
+                            }
+                        }
+
+                        if (displayStart.isSame(monthStart, 'day') && displayEnd.isSame(monthEnd, 'day')) {
+                            periodTitle = currentMonth.format('MMMM YYYY');
+                        } else {
+                            periodTitle = `${displayStart.format('MMMM D')}-${displayEnd.format('D YYYY')}`;
+                        }
+                    } else if (view === 'week') {
+                        periodTitle = `Week of ${moment(periodKey).startOf('week').format('MMMM D, YYYY')}`;
+                    } else {
+                        periodTitle = moment(periodKey).format('MMMM YYYY');
+                    }
 
                     return (
                         <div key={periodKey} className="cal-container print-cal-page">
@@ -215,13 +248,15 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                                     <div className="print-custom-header">{filterParams.customHeader}</div>
                                 )}
                             </div>
-                            <CustomToolbar
-                                date={view === 'week'
-                                    ? moment(periodKey).startOf('week').toDate()
-                                    : moment(periodKey).toDate()
-                                }
-                                view={view}
-                            />
+                            {view !== 'agenda' && (
+                                <CustomToolbar
+                                    date={view === 'week'
+                                        ? moment(periodKey).startOf('week').toDate()
+                                        : moment(periodKey).toDate()
+                                    }
+                                    view={view}
+                                />
+                            )}
                             <Calendar
                                 date={periodStart}
                                 events={periodEvents}
@@ -231,7 +266,7 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                                 }}
                                 showAllEvents
                                 dateRange={dateRange}
-                                filterParams={filterParams}
+                                filterParams={{...filterParams, periodTitle}}
                             />
                         </div>
                     );
