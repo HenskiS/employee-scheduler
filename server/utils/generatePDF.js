@@ -97,7 +97,9 @@ const generatePrintPreviewPDF = async (params, options = {}) => {
 
   if (params.startDate) queryParams.append('start', params.startDate);
   if (params.endDate) queryParams.append('end', params.endDate);
-  if (params.view) queryParams.append('view', params.view || 'agenda');
+
+  const view = params.view || 'agenda';
+  queryParams.append('view', view);
 
   // Handle array parameters (labels, doctors, technicians)
   if (params.labels && params.labels.length > 0) {
@@ -132,10 +134,18 @@ const generatePrintPreviewPDF = async (params, options = {}) => {
     queryParams.append('header', encodeURIComponent(params.customHeader));
   }
 
+  // Set orientation based on view type
+  // Landscape for month/week views, portrait for agenda
+  const pdfOptions = {
+    ...options,
+    landscape: view === 'month' || view === 'week'
+  };
+
   const url = `http://localhost:${process.env.PORT}/print?${queryParams.toString()}`;
   console.log('Generating PDF with URL:', url);
   console.log('PDF params:', JSON.stringify(params, null, 2));
-  return await generatePDF(url, options);
+  console.log('PDF orientation:', pdfOptions.landscape ? 'landscape' : 'portrait');
+  return await generatePDF(url, pdfOptions);
 };
 
 module.exports = {
