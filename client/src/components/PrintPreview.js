@@ -38,7 +38,7 @@ const PrintPreview = () => {
         if (!value) return [];
 
         // Try parsing as comma-separated IDs first (new format)
-        if (param === 'doctors' || param === 'technicians') {
+        if (param === 'doctors' || param === 'technicians' || param === 'tags') {
           if (!value.includes('[') && !value.includes('{')) {
             // This is the new comma-separated ID format
             return value.split(',').map(id => ({ id: parseInt(id) }));
@@ -106,6 +106,7 @@ const PrintPreview = () => {
       labels: parseArray('labels'),
       doctors: parseArray('doctors'),
       technicians: parseArray('technicians'),
+      tags: parseArray('tags'),
       displayOptions: parseDisplayOptions(),
       customHeader: customHeader ? decodeURIComponent(customHeader) : ''
     };
@@ -164,6 +165,11 @@ const PrintPreview = () => {
             // This is already full object format
             filters.technicians = filterParams.technicians;
           }
+        }
+
+        // Add tags to filters if provided
+        if (filterParams.tags && filterParams.tags.length > 0) {
+          filters.tags = filterParams.tags;
         }
 
         const filtered = await fetchFilteredEvents(
@@ -258,6 +264,9 @@ const PrintPreview = () => {
         filterParams.technicians.some(filterTech => filterTech.id === technician.id)
       );
     }
+
+    // Tags are already ID-only format, no expansion needed
+    // They will be expanded by PrintDialog when it receives them
 
     return expanded;
   }, [filterParams, doctors, technicians]);

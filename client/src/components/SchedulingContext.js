@@ -124,10 +124,10 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
 
     const fetchData = useCallback(async () => {
         if (!token) return;
-        
+
         try {
             setLoading(true);
-            
+
             const response = await axios.get(`/refresh?start=${dateRange.start}&end=${dateRange.end}`);
             const { data: { doctors, technicians, users, events } } = response.data;
 
@@ -135,6 +135,11 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             setTechnicians(technicians.sort((a, b) => a.name.localeCompare(b.name)));
             setUsers(users.sort((a, b) => a.name.localeCompare(b.name)));
             setEvents(events);
+
+            // Also fetch tags
+            const tagsResponse = await axios.get('/tags');
+            setTags(tagsResponse.data);
+
             setError(null);
         } catch (err) {
             setError(err.message);
@@ -188,6 +193,11 @@ export const SchedulingProvider = ({ children, refreshInterval = DEFAULT_REFRESH
             if (filters.technicians?.length > 0) {
                 const technicianIds = filters.technicians.map(technician => technician.id).join(',');
                 params.append('technicians', technicianIds);
+            }
+
+            if (filters.tags?.length > 0) {
+                const tagIds = filters.tags.map(tag => tag.id).join(',');
+                params.append('tags', tagIds);
             }
 
             const response = await axios.get(`/events?${params.toString()}`);

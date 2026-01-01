@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, TextField, List, ListItem, ListItemText, Button } from '@mui/material';
-import { Search, Add } from '@mui/icons-material';
+import { Box, TextField, List, ListItem, ListItemText, Button, Autocomplete, Chip, IconButton, Tooltip } from '@mui/material';
+import { Search, Add, FileDownload } from '@mui/icons-material';
 import { useMediaQuery } from '@mui/material';
 
 const PeopleList = ({
@@ -9,7 +9,13 @@ const PeopleList = ({
   selectedPerson,
   onSearchChange,
   onPersonSelect,
-  onAddNew
+  onAddNew,
+  tags,
+  selectedTags,
+  onTagsChange,
+  showTagFilter,
+  onExportCSV,
+  showExportButton
 }) => {
   const getDisplayName = (person) => {
     if (person.customer) {
@@ -33,17 +39,65 @@ const PeopleList = ({
 
   return (
     <Box sx={{ width: isMobile ? '70%' : '35%', borderRight: 1, borderColor: 'divider', px: 2, display: 'flex', flexDirection: 'column' }}>
-      <TextField
-        fullWidth
-        variant="outlined"
-        placeholder="Search..."
-        value={searchTerm}
-        onChange={(e) => onSearchChange(e.target.value)}
-        InputProps={{
-          startAdornment: <Search sx={{ color: 'action.active', mr: 1 }} />,
-        }}
-        sx={{ mt: 1 }}
-      />
+      {/* Search and Export Row */}
+      <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Search..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          InputProps={{
+            startAdornment: <Search sx={{ color: 'action.active', mr: 1 }} />,
+          }}
+        />
+        {showExportButton && (
+          <Tooltip title="Export to CSV">
+            <IconButton
+              onClick={onExportCSV}
+              color="primary"
+              sx={{ border: 1, borderColor: 'primary.main', borderRadius: 1 }}
+            >
+              <FileDownload />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
+
+      {/* Tag Filter */}
+      {showTagFilter && tags && (
+        <Autocomplete
+          multiple
+          options={tags}
+          getOptionLabel={(option) => option.name}
+          value={selectedTags}
+          onChange={(event, newValue) => onTagsChange(newValue)}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder={selectedTags.length === 0 ? "Filter by tags..." : ""}
+              size="small"
+            />
+          )}
+          renderTags={(value, getTagProps) =>
+            value.map((option, index) => (
+              <Chip
+                key={option.id}
+                label={option.name}
+                size="small"
+                {...getTagProps({ index })}
+                style={{
+                  backgroundColor: option.color,
+                  color: '#fff',
+                  fontWeight: 500
+                }}
+              />
+            ))
+          }
+          sx={{ mt: 1, mb: 1 }}
+        />
+      )}
+
       <List sx={{ flexGrow: 1, overflowY: 'auto' }}>
         {filteredPeople.map((person) => (
           <ListItem

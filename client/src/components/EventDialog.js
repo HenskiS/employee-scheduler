@@ -756,7 +756,7 @@ function EventDialog({
               {/* Tags Section */}
               <Autocomplete
                 multiple
-                options={tags}
+                options={tags.filter(tag => tag.appliesTo.includes('event'))}
                 getOptionLabel={(option) => option.name}
                 value={formData.tags || []}
                 onChange={(event, newValue) => {

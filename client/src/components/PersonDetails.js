@@ -17,11 +17,14 @@ import {
   InputLabel,
   Card,
   CardContent,
-  Stack
+  Stack,
+  Autocomplete,
+  Chip
 } from '@mui/material';
 import { Save, Edit, Delete, Add, Remove } from '@mui/icons-material';
 import { useMediaQuery } from '@mui/material';
 import axios from '../api/axios';
+import { useScheduling } from './SchedulingContext';
 
 const FIELD_CONFIGS = {
   0: [ // Doctors
@@ -189,21 +192,25 @@ const PersonDetails = ({
   const [successMessage, setSuccessMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
   const isMobile = useMediaQuery('(max-width:800px)');
+  const { tags } = useScheduling();
 
   useEffect(() => {
     if (person) {
       const data = {
         ...person,
-        emails: person.emails || []
+        emails: person.emails || [],
+        tags: person.tags || []
       };
       setFormData(data);
       setOriginalData(data);
     } else {
       setFormData({
-        emails: []
+        emails: [],
+        tags: []
       });
       setOriginalData({
-        emails: []
+        emails: [],
+        tags: []
       });
     }
     setValidationErrors({});
@@ -415,6 +422,47 @@ const PersonDetails = ({
           />
         )
       )}
+
+        {/* Tags Section */}
+        {(personType === 0 || personType === 1 || personType === 2) && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Autocomplete
+              multiple
+              options={tags.filter(tag =>
+                tag.appliesTo.includes(personType === 0 ? 'doctor' : personType === 1 ? 'technician' : 'user')
+              )}
+              getOptionLabel={(option) => option.name}
+              value={formData.tags || []}
+              onChange={(event, newValue) => {
+                handleFieldChange('tags', newValue);
+              }}
+              disabled={!editMode && !isAdding}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Tags"
+                  helperText="Categorize this record with tags"
+                />
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    key={option.id}
+                    label={option.name}
+                    {...getTagProps({ index })}
+                    style={{
+                      backgroundColor: option.color,
+                      color: '#fff',
+                      fontWeight: 500
+                    }}
+                  />
+                ))
+              }
+              sx={{ mb: 2 }}
+            />
+          </>
+        )}
 
         {personType === 0 && (
           <>

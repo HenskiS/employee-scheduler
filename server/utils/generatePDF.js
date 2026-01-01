@@ -114,6 +114,10 @@ const generatePrintPreviewPDF = async (params, options = {}) => {
     queryParams.append('technicians', params.technicians.join(','));
   }
 
+  if (params.tags && params.tags.length > 0) {
+    queryParams.append('tags', params.tags.join(','));
+  }
+
   // Handle display options (compact format)
   if (params.displayOptions) {
     const opts = params.displayOptions;

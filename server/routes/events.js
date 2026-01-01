@@ -595,9 +595,26 @@ const getEvents = async (start, end, filters = {}) => {
     // Build include array for associations
     const includeArray = [
       { model: Doctor },
-      { model: EventCompletion, as: 'completion', required: false },
-      { model: Tag, as: 'tags', through: { attributes: [] } }
+      { model: EventCompletion, as: 'completion', required: false }
     ];
+
+    // Add tag filtering if provided
+    if (filters.tags && filters.tags.length > 0) {
+      includeArray.push({
+        model: Tag,
+        as: 'tags',
+        where: { id: { [Op.in]: filters.tags } },
+        through: { attributes: [] },
+        required: true  // INNER JOIN - only events with these tags
+      });
+    } else {
+      // No tag filter - include all tags
+      includeArray.push({
+        model: Tag,
+        as: 'tags',
+        through: { attributes: [] }
+      });
+    }
 
     // Add technician filtering if provided
     if (filters.technicians && filters.technicians.length > 0) {
@@ -634,7 +651,7 @@ const getEvents = async (start, end, filters = {}) => {
 // Route handler
 const getEventsHandler = async (req, res) => {
   try {
-    const { start, end, labels, doctors, technicians } = req.query;
+    const { start, end, labels, doctors, technicians, tags } = req.query;
 
     // Parse filter parameters
     const filters = {};
@@ -649,6 +666,10 @@ const getEventsHandler = async (req, res) => {
 
     if (technicians) {
       filters.technicians = Array.isArray(technicians) ? technicians.map(Number) : technicians.split(',').map(Number);
+    }
+
+    if (tags) {
+      filters.tags = Array.isArray(tags) ? tags.map(Number) : tags.split(',').map(Number);
     }
 
     const events = await getEvents(start, end, filters);

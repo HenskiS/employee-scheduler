@@ -5,16 +5,18 @@ import Sidebar from './Sidebar';
 import PeopleList from './PeopleList';
 import PersonDetails from './PersonDetails';
 import { useScheduling } from './SchedulingContext';
+import axios from '../api/axios';
 
 const PeopleDialog = ({ open, onClose }) => {
   const [tab, setTab] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTags, setSelectedTags] = useState([]);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [showingDetails, setShowingDetails] = useState(false);
-  
-  const { doctors, technicians, users, refreshData } = useScheduling();
+
+  const { doctors, technicians, users, tags, refreshData } = useScheduling();
   const isMobile = useMediaQuery('(max-width:800px)');
 
   const getCurrentPeople = () => {
@@ -24,11 +26,24 @@ const PeopleDialog = ({ open, onClose }) => {
       technicians,
       users
     };
-    return peopleMap[types[tab]] || [];
+    let people = peopleMap[types[tab]] || [];
+
+    // Apply tag filter (OR logic)
+    if (selectedTags.length > 0) {
+      people = people.filter(person => {
+        if (!person.tags || person.tags.length === 0) return false;
+        return person.tags.some(personTag =>
+          selectedTags.some(selectedTag => selectedTag.id === personTag.id)
+        );
+      });
+    }
+
+    return people;
   };
 
   const handleTabChange = (newValue) => {
     setTab(newValue);
+    setSelectedTags([]);
     setSelectedPerson(null);
     setEditMode(false);
     setIsAdding(false);
@@ -94,6 +109,42 @@ const PeopleDialog = ({ open, onClose }) => {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const types = ['doctors', 'technicians', 'users'];
+      const endpoint = types[tab];
+      const filteredPeople = getCurrentPeople();
+
+      if (filteredPeople.length === 0) {
+        alert('No records to export with the current filters.');
+        return;
+      }
+
+      // Build query params for tag filtering
+      const params = new URLSearchParams();
+      if (selectedTags.length > 0) {
+        params.append('tags', selectedTags.map(tag => tag.id).join(','));
+      }
+
+      const response = await axios.get(`/${endpoint}/export/csv?${params.toString()}`, {
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${endpoint}-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export CSV. Please try again.');
+    }
+  };
+
   return (
     <Dialog 
       open={open} 
@@ -147,6 +198,14 @@ const PeopleDialog = ({ open, onClose }) => {
                 onSearchChange={setSearchTerm}
                 onPersonSelect={handlePersonSelect}
                 onAddNew={handleAddNew}
+                tags={tags.filter(tag =>
+                  tag.appliesTo.includes(tab === 0 ? 'doctor' : tab === 1 ? 'technician' : 'user')
+                )}
+                selectedTags={selectedTags}
+                onTagsChange={setSelectedTags}
+                showTagFilter={true}
+                onExportCSV={handleExportCSV}
+                showExportButton={true}
               />
             </>
           )}

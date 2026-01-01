@@ -19,13 +19,13 @@ router.get('/', authMiddleware, async (req, res) => {
 // Create a new tag
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { name, color } = req.body;
+    const { name, color, appliesTo } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Tag name is required' });
     }
 
-    const tag = await Tag.create({ name, color });
+    const tag = await Tag.create({ name, color, appliesTo });
     res.status(201).json(tag);
   } catch (error) {
     console.error('Error creating tag:', error);
@@ -39,14 +39,14 @@ router.post('/', authMiddleware, async (req, res) => {
 // Update a tag
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { name, color } = req.body;
+    const { name, color, appliesTo } = req.body;
     const tag = await Tag.findByPk(req.params.id);
 
     if (!tag) {
       return res.status(404).json({ error: 'Tag not found' });
     }
 
-    await tag.update({ name, color });
+    await tag.update({ name, color, appliesTo });
     res.json(tag);
   } catch (error) {
     console.error('Error updating tag:', error);

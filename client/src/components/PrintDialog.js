@@ -15,7 +15,9 @@ import {
   Alert,
   FormControlLabel,
   Typography,
-  TextField
+  TextField,
+  Autocomplete,
+  Chip
 } from '@mui/material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -36,13 +38,14 @@ const defaultDisplayOptions = {
 };
 
 const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => {
-  const { technicians, doctors, labels } = useScheduling();
+  const { technicians, doctors, labels, tags } = useScheduling();
   const navigate = useNavigate();
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [selectedLabels, setSelectedLabels] = useState([]);
   const [selectedDoctors, setSelectedDoctors] = useState([]);
   const [selectedTechnicians, setSelectedTechnicians] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [selectedView, setSelectedView] = useState('agenda');
   const [dateError, setDateError] = useState(false);
   const [displayOptions, setDisplayOptions] = useState(defaultDisplayOptions);
@@ -56,6 +59,7 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
       setSelectedLabels([]);
       setSelectedDoctors([]);
       setSelectedTechnicians([]);
+      setSelectedTags([]);
       setSelectedView('agenda');
       setDateError(false);
       setDisplayOptions(defaultDisplayOptions);
@@ -112,8 +116,16 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
         );
         setSelectedTechnicians(matchedTechnicians);
       }
+
+      // Match and set tags by ID
+      if (initialValues.tags && tags.length > 0) {
+        const matchedTags = tags.filter(tag =>
+          initialValues.tags.some(initTag => initTag.id === tag.id)
+        );
+        setSelectedTags(matchedTags);
+      }
     }
-  }, [initialValues, open, shouldReset, labels, doctors, technicians]);
+  }, [initialValues, open, shouldReset, labels, doctors, technicians, tags]);
 
   const handleDisplayOptionChange = (option) => {
     if (option.startsWith('doctor.')) {
@@ -177,6 +189,11 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
     if (selectedTechnicians.length > 0) {
       const technicianIds = selectedTechnicians.map(tech => tech.id);
       params.set('technicians', technicianIds.join(','));
+    }
+
+    if (selectedTags.length > 0) {
+      const tagIds = selectedTags.map(tag => tag.id);
+      params.set('tags', tagIds.join(','));
     }
 
     // Add custom header if provided
@@ -433,6 +450,40 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
                 ))}
               </Select>
             </FormControl>
+
+            {/* Tags Selector */}
+            <Autocomplete
+              multiple
+              options={tags.filter(tag => tag.appliesTo.includes('event'))}
+              value={selectedTags}
+              onChange={(event, newValue) => setSelectedTags(newValue)}
+              getOptionLabel={(option) => option.name}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => {
+                  const { key, ...tagProps } = getTagProps({ index });
+                  return (
+                    <Chip
+                      key={key}
+                      label={option.name}
+                      {...tagProps}
+                      style={{
+                        backgroundColor: option.color,
+                        color: '#fff',
+                        fontWeight: 500
+                      }}
+                    />
+                  );
+                })
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="outlined"
+                  label="Event Tags"
+                  placeholder="Filter by tags"
+                />
+              )}
+            />
           </Box>
         </DialogContent>
         <DialogActions>
