@@ -24,9 +24,11 @@ import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import moment from 'moment';
+import axios from '../api/axios';
 import { useScheduling } from './SchedulingContext';
 import RecurringEventForm from './RecurringEventForm';
 import TechnicianSelector from './TechnicianSelector';
+import TechnicianCompletionFields from './TechnicianCompletionFields';
 import RecurringEventChoiceDialog from './RecurringEventChoiceDialog';
 
 function EventDialog({
@@ -63,11 +65,10 @@ function EventDialog({
   });
 
   const [completionData, setCompletionData] = useState({
-    jobNotes: '',
-    clockInTime: null,
-    clockOutTime: null,
-    numberOfCases: ''
+    jobNotes: ''
   });
+
+  const [technicianCompletionData, setTechnicianCompletionData] = useState({});
 
   const [errors, setErrors] = useState({
     name: '',
@@ -181,23 +182,34 @@ function EventDialog({
       // Load completion data if it exists
       if (event.completion) {
         setCompletionData({
-          jobNotes: event.completion.jobNotes || '',
-          clockInTime: event.completion.clockInTime
-            ? moment().startOf('day').add(moment.duration(event.completion.clockInTime))
-            : null,
-          clockOutTime: event.completion.clockOutTime
-            ? moment().startOf('day').add(moment.duration(event.completion.clockOutTime))
-            : null,
-          numberOfCases: event.completion.numberOfCases || ''
+          jobNotes: event.completion.jobNotes || ''
         });
       } else {
         // Reset completion data if no completion exists
         setCompletionData({
-          jobNotes: '',
-          clockInTime: null,
-          clockOutTime: null,
-          numberOfCases: ''
+          jobNotes: ''
         });
+      }
+
+      // Load per-technician completion data
+      if (event.Technicians && Array.isArray(event.Technicians)) {
+        const techCompletionData = {};
+        event.Technicians.forEach(tech => {
+          if (tech.EventTechnician) {
+            techCompletionData[tech.id] = {
+              clockInTime: tech.EventTechnician.clockInTime
+                ? moment().startOf('day').add(moment.duration(tech.EventTechnician.clockInTime))
+                : null,
+              clockOutTime: tech.EventTechnician.clockOutTime
+                ? moment().startOf('day').add(moment.duration(tech.EventTechnician.clockOutTime))
+                : null,
+              numberOfCases: tech.EventTechnician.numberOfCases || ''
+            };
+          }
+        });
+        setTechnicianCompletionData(techCompletionData);
+      } else {
+        setTechnicianCompletionData({});
       }
     } else if (newEvent) {
       // For new events, if view is jobs, resourceId is jobNumbers
@@ -269,13 +281,12 @@ function EventDialog({
     }
 
     // Validate end time is after start time
-    if (formData.startTime && formData.endTime && 
-        formData.startTime.isValid() && formData.endTime.isValid() && 
+    if (formData.startTime && formData.endTime &&
+        formData.startTime.isValid() && formData.endTime.isValid() &&
         formData.endTime.isSameOrBefore(formData.startTime)) {
       newErrors.endTime = 'End time must be after start time';
       isValid = false;
     }
-
     setErrors(newErrors);
     return isValid;
   };
@@ -349,12 +360,35 @@ function EventDialog({
       // Save completion data if this is an existing event and onSaveCompletion is provided
       if (event?.id && onSaveCompletion) {
         const completionPayload = {
-          jobNotes: completionData.jobNotes,
-          clockInTime: completionData.clockInTime ? completionData.clockInTime.format('HH:mm:ss') : null,
-          clockOutTime: completionData.clockOutTime ? completionData.clockOutTime.format('HH:mm:ss') : null,
-          numberOfCases: completionData.numberOfCases ? parseInt(completionData.numberOfCases) : null
+          jobNotes: completionData.jobNotes
         };
         await onSaveCompletion(event.id, completionPayload);
+      }
+
+      // Save per-technician completion data if this is an existing event with technicians
+      if (event?.id && formData.Technicians && formData.Technicians.length > 0) {
+        // Filter out "All Technicians" option and create completion data for each technician
+        const actualTechnicians = formData.Technicians.filter(tech => tech.id !== 'all');
+
+        if (actualTechnicians.length > 0) {
+          const techCompletionArray = actualTechnicians.map(tech => {
+            const data = technicianCompletionData[tech.id] || {};
+            return {
+              technicianId: tech.id,
+              clockInTime: data.clockInTime ? data.clockInTime.format('HH:mm:ss') : null,
+              clockOutTime: data.clockOutTime ? data.clockOutTime.format('HH:mm:ss') : null,
+              numberOfCases: data.numberOfCases && data.numberOfCases !== '' ? parseInt(data.numberOfCases) : null
+            };
+          });
+
+          try {
+            await axios.put(`/events/${event.id}/technician-completion`, {
+              technicianCompletionData: techCompletionArray
+            });
+          } catch (error) {
+            console.error('Error saving per-technician completion data:', error);
+          }
+        }
       }
     }
   };
@@ -368,13 +402,13 @@ function EventDialog({
     }
   };
   
-  const handleRecurringChoice = (choice) => {
+  const handleRecurringChoice = async (choice) => {
     setShowRecurringChoice(false);
     if (!choice) return;
 
     // Check if "All Technicians" is selected
     const isForAll = formData.Technicians?.some(tech => tech.id === 'all');
-    
+
     // Prepare the data to be saved for recurring events
     const eventData = {
       ...formData,
@@ -386,7 +420,32 @@ function EventDialog({
     };
 
     if (recurringAction === 'edit') {
-      onSave(eventData, choice);
+      await onSave(eventData, choice);
+
+      // Save per-technician completion data if this is an existing event with technicians
+      if (event?.id && formData.Technicians && formData.Technicians.length > 0) {
+        const actualTechnicians = formData.Technicians.filter(tech => tech.id !== 'all');
+
+        if (actualTechnicians.length > 0) {
+          const techCompletionArray = actualTechnicians.map(tech => {
+            const data = technicianCompletionData[tech.id] || {};
+            return {
+              technicianId: tech.id,
+              clockInTime: data.clockInTime ? data.clockInTime.format('HH:mm:ss') : null,
+              clockOutTime: data.clockOutTime ? data.clockOutTime.format('HH:mm:ss') : null,
+              numberOfCases: data.numberOfCases && data.numberOfCases !== '' ? parseInt(data.numberOfCases) : null
+            };
+          });
+
+          try {
+            await axios.put(`/events/${event.id}/technician-completion`, {
+              technicianCompletionData: techCompletionArray
+            });
+          } catch (error) {
+            console.error('Error saving per-technician completion data:', error);
+          }
+        }
+      }
     } else if (recurringAction === 'delete') {
       onDelete(choice);
     }
@@ -740,6 +799,15 @@ function EventDialog({
                 These fields are for recording information after the job is completed.
               </Typography>
 
+              {/* Per-Technician Completion Fields */}
+              {formData.Technicians && formData.Technicians.length > 0 && (
+                <TechnicianCompletionFields
+                  technicians={formData.Technicians}
+                  completionData={technicianCompletionData}
+                  onChange={setTechnicianCompletionData}
+                />
+              )}
+
               <TextField
                 margin="dense"
                 name="jobNotes"
@@ -781,43 +849,6 @@ function EventDialog({
                 }
                 sx={{ mt: 2, mb: 2 }}
               />
-
-              <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
-                <Box sx={{ flex: '1 1 200px' }}>
-                  <TimePicker
-                    label="Clock In Time"
-                    value={completionData.clockInTime}
-                    onChange={(time) => setCompletionData({ ...completionData, clockInTime: time })}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true
-                      }
-                    }}
-                  />
-                </Box>
-                <Box sx={{ flex: '1 1 200px' }}>
-                  <TimePicker
-                    label="Clock Out Time"
-                    value={completionData.clockOutTime}
-                    onChange={(time) => setCompletionData({ ...completionData, clockOutTime: time })}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true
-                      }
-                    }}
-                  />
-                </Box>
-                <Box sx={{ flex: '1 1 200px' }}>
-                  <TextField
-                    name="numberOfCases"
-                    label="Number of Cases"
-                    type="number"
-                    fullWidth
-                    value={completionData.numberOfCases}
-                    onChange={(e) => setCompletionData({ ...completionData, numberOfCases: e.target.value })}
-                  />
-                </Box>
-              </Box>
             </>
           )}
         </DialogContent>

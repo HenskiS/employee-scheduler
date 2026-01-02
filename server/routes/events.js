@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const sequelize = require('../config/database')
 const { Op } = require('sequelize')
-const {Event, Technician, Doctor, EventCompletion, Tag} = require('../models/index');
+const {Event, Technician, Doctor, EventCompletion, EventTechnician, Tag} = require('../models/index');
 const authMiddleware = require('../middleware/auth');
 const RRule = require('rrule').RRule;
 
@@ -545,12 +545,22 @@ router.post('/', authMiddleware, async (req, res) => {
       // Fetch the created event with associations
       const createdEvent = await Event.findByPk(event.id, {
         include: [
-          { model: Technician, through: { attributes: [] } },
+          {
+            model: Technician,
+            through: {
+              attributes: ['clockInTime', 'clockOutTime', 'numberOfCases', 'createdAt', 'updatedAt']
+            }
+          },
           { model: Doctor },
-          { 
+          {
             model: Event,
             as: 'recurrences',
-            include: [{ model: Technician, through: { attributes: [] } }]
+            include: [{
+              model: Technician,
+              through: {
+                attributes: ['clockInTime', 'clockOutTime', 'numberOfCases', 'createdAt', 'updatedAt']
+              }
+            }]
           }
         ]
       });
@@ -621,7 +631,9 @@ const getEvents = async (start, end, filters = {}) => {
       // When filtering by technicians, include events assigned to those technicians OR forAll events
       includeArray.push({
         model: Technician,
-        through: { attributes: [] },
+        through: {
+          attributes: ['clockInTime', 'clockOutTime', 'numberOfCases', 'createdAt', 'updatedAt']
+        },
         where: { id: { [Op.in]: filters.technicians } },
         required: false // Left join to allow forAll events with no technicians
       });
@@ -634,7 +646,9 @@ const getEvents = async (start, end, filters = {}) => {
     } else {
       includeArray.push({
         model: Technician,
-        through: { attributes: [] }
+        through: {
+          attributes: ['clockInTime', 'clockOutTime', 'numberOfCases', 'createdAt', 'updatedAt']
+        }
       });
     }
 
@@ -687,7 +701,12 @@ router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const event = await Event.findByPk(req.params.id, {
       include: [
-        { model: Technician, through: { attributes: [] } },
+        {
+          model: Technician,
+          through: {
+            attributes: ['clockInTime', 'clockOutTime', 'numberOfCases', 'createdAt', 'updatedAt']
+          }
+        },
         { model: Doctor },
         { model: EventCompletion, as: 'completion', required: false },
         { model: Tag, as: 'tags', through: { attributes: [] } }
@@ -1019,6 +1038,70 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     res.status(204).end();
   } catch (error) {
     await t.rollback();
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update technician completion data for an event
+router.put('/:id/technician-completion', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { technicianCompletionData } = req.body;
+
+    if (!technicianCompletionData || !Array.isArray(technicianCompletionData)) {
+      return res.status(400).json({
+        error: 'technicianCompletionData array is required'
+      });
+    }
+
+    // Verify event exists
+    const event = await Event.findByPk(id);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Update each technician's completion data
+    for (const data of technicianCompletionData) {
+      const { technicianId, clockInTime, clockOutTime, numberOfCases } = data;
+
+      if (!technicianId) {
+        continue; // Skip if no technician ID
+      }
+
+      // Update the EventTechnician record
+      await EventTechnician.update(
+        {
+          clockInTime: clockInTime || null,
+          clockOutTime: clockOutTime || null,
+          numberOfCases: numberOfCases !== undefined ? numberOfCases : null
+        },
+        {
+          where: {
+            EventId: id,
+            TechnicianId: technicianId
+          }
+        }
+      );
+    }
+
+    // Fetch updated event with technician completion data
+    const updatedEvent = await Event.findByPk(id, {
+      include: [
+        {
+          model: Technician,
+          through: {
+            attributes: ['clockInTime', 'clockOutTime', 'numberOfCases', 'createdAt', 'updatedAt']
+          }
+        },
+        { model: Doctor },
+        { model: EventCompletion, as: 'completion' },
+        { model: Tag, as: 'tags', through: { attributes: [] } }
+      ]
+    });
+
+    res.json(updatedEvent);
+  } catch (error) {
+    console.error('Error updating technician completion data:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -98,6 +98,7 @@ const PrintPreview = () => {
     };
 
     const customHeader = searchParams.get('header');
+    const splitByMonth = searchParams.get('splitByMonth') === 'true';
 
     return {
       startDate,
@@ -108,7 +109,8 @@ const PrintPreview = () => {
       technicians: parseArray('technicians'),
       tags: parseArray('tags'),
       displayOptions: parseDisplayOptions(),
-      customHeader: customHeader ? decodeURIComponent(customHeader) : ''
+      customHeader: customHeader ? decodeURIComponent(customHeader) : '',
+      splitByMonth: splitByMonth
     };
   }, [searchParams]);
 

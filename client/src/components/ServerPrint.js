@@ -52,7 +52,8 @@ export default function SchedulePdfView() {
   const filterParams = {
     displayOptions: parseDisplayOptions(),
     view: view,
-    customHeader: customHeader
+    customHeader: customHeader,
+    splitByMonth: searchParams.get('splitByMonth') === 'true'
   };
 
   useEffect(() => {

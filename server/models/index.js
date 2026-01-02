@@ -5,6 +5,7 @@ const Technician = require('./Technician');
 const User = require('./User');
 const Event = require('./Event');
 const EventCompletion = require('./EventCompletion');
+const EventTechnician = require('./EventTechnician');
 const Tag = require('./Tag');
 
 // Doctor-Email relationship
@@ -24,9 +25,9 @@ Technician.belongsToMany(Doctor, { through: 'DoctorAvoidTechnicians', as: 'avoid
 Event.belongsTo(Event, { as: 'originalEvent', foreignKey: 'originalEventId' });
 Event.hasMany(Event, { as: 'recurrences', foreignKey: 'originalEventId' });
 
-// Event-Technician relationship
-Event.belongsToMany(Technician, { through: 'EventTechnicians' });
-Technician.belongsToMany(Event, { through: 'EventTechnicians' });
+// Event-Technician relationship (with completion data in join table)
+Event.belongsToMany(Technician, { through: EventTechnician });
+Technician.belongsToMany(Event, { through: EventTechnician });
 
 // Event-Doctor relationship
 Event.belongsTo(Doctor);
@@ -59,5 +60,6 @@ module.exports = {
   User,
   Event,
   EventCompletion,
+  EventTechnician,
   Tag
 };

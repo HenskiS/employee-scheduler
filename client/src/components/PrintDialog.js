@@ -50,6 +50,7 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
   const [dateError, setDateError] = useState(false);
   const [displayOptions, setDisplayOptions] = useState(defaultDisplayOptions);
   const [customHeader, setCustomHeader] = useState('');
+  const [splitByMonth, setSplitByMonth] = useState(false);
 
   // Reset state only when shouldReset is true
   useEffect(() => {
@@ -64,6 +65,7 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
       setDateError(false);
       setDisplayOptions(defaultDisplayOptions);
       setCustomHeader('');
+      setSplitByMonth(false);
     }
   }, [shouldReset, open]);
 
@@ -91,6 +93,11 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
       // Set custom header
       if (initialValues.customHeader) {
         setCustomHeader(initialValues.customHeader);
+      }
+
+      // Set splitByMonth (default to true if not specified)
+      if (initialValues.splitByMonth !== undefined) {
+        setSplitByMonth(initialValues.splitByMonth);
       }
 
       // Match and set labels
@@ -200,6 +207,9 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
     if (customHeader) {
       params.set('header', encodeURIComponent(customHeader));
     }
+
+    // Add splitByMonth parameter
+    params.set('splitByMonth', splitByMonth);
 
     // Compress display options by only storing non-default values
     const defaultOpts = defaultDisplayOptions;
@@ -357,6 +367,17 @@ const PrintDialog = ({ open, onClose, onPrint, shouldReset, initialValues }) => 
                     }
                     label={<Typography sx={{ fontSize: '1rem' }}>Office Notes</Typography>}
                   />
+                  {selectedView === 'agenda' && (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={splitByMonth}
+                          onChange={(e) => setSplitByMonth(e.target.checked)}
+                        />
+                      }
+                      label={<Typography sx={{ fontSize: '1rem' }}>Split by Month</Typography>}
+                    />
+                  )}
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography sx={{ fontSize: '1rem' }}>Doctor Info:</Typography>

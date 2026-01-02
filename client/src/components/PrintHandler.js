@@ -126,13 +126,29 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
     }
 
     const getPeriods = () => {
+        // If splitByMonth is explicitly false AND view is agenda, treat entire range as one period
+        if (filterParams.splitByMonth === false && view === 'agenda') {
+            // Return a single period covering the entire date range
+            if (dateRange) {
+                return [moment(dateRange.start).format('YYYY-MM-DD')];
+            } else {
+                // If no dateRange, return single period from first event
+                const processedEvents = processEvents();
+                if (processedEvents.length > 0) {
+                    return [moment(processedEvents[0].start).format('YYYY-MM-DD')];
+                }
+                return [];
+            }
+        }
+
+        // Existing logic: Split by month/week as before
         if (!dateRange) {
             const processedEvents = processEvents();
             if (view === 'month' || view === 'agenda') {
                 const months = processedEvents.map(event => moment(event.start).format('YYYY-MM'));
                 return [...new Set(months)].sort();
             } else {
-                const weeks = processedEvents.map(event => 
+                const weeks = processedEvents.map(event =>
                     moment(event.start).startOf('week').format('YYYY-MM-DD')
                 );
                 return [...new Set(weeks)].sort();
@@ -155,7 +171,7 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                 }
             }
 
-            return periods;           
+            return periods;
         }
     };
 
@@ -195,8 +211,13 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                     const periodStart = view === 'week'
                         ? moment(periodKey).startOf('week').toDate()
                         : moment(periodKey).startOf('month').toDate();
-                    
+
                     const periodEvents = processEvents().filter(event => {
+                        // When splitByMonth is false, include all events (no filtering)
+                        if (filterParams.splitByMonth === false) {
+                            return true;
+                        }
+
                         if (view === 'week') {
                             const eventStart = moment(event.start);
                             const weekStart = moment(periodKey);
@@ -210,29 +231,37 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                     // Compute period title for agenda view
                     let periodTitle = '';
                     if (view === 'agenda') {
-                        const currentMonth = moment(periodKey);
-                        const monthStart = currentMonth.clone().startOf('month');
-                        const monthEnd = currentMonth.clone().endOf('month');
-
-                        let displayStart = monthStart;
-                        let displayEnd = monthEnd;
-
-                        if (dateRange) {
-                            const rangeStart = moment(dateRange.start);
-                            const rangeEnd = moment(dateRange.end);
-
-                            if (rangeStart.isSame(currentMonth, 'month')) {
-                                displayStart = rangeStart;
-                            }
-                            if (rangeEnd.isSame(currentMonth, 'month')) {
-                                displayEnd = rangeEnd;
-                            }
-                        }
-
-                        if (displayStart.isSame(monthStart, 'day') && displayEnd.isSame(monthEnd, 'day')) {
-                            periodTitle = currentMonth.format('MMMM YYYY');
+                        // If not splitting by month, show full date range
+                        if (filterParams.splitByMonth === false && dateRange) {
+                            const displayStart = moment(dateRange.start);
+                            const displayEnd = moment(dateRange.end);
+                            periodTitle = `${displayStart.format('MMMM D')} - ${displayEnd.format('MMMM D, YYYY')}`;
                         } else {
-                            periodTitle = `${displayStart.format('MMMM D')}-${displayEnd.format('D YYYY')}`;
+                            // Existing month-specific title logic
+                            const currentMonth = moment(periodKey);
+                            const monthStart = currentMonth.clone().startOf('month');
+                            const monthEnd = currentMonth.clone().endOf('month');
+
+                            let displayStart = monthStart;
+                            let displayEnd = monthEnd;
+
+                            if (dateRange) {
+                                const rangeStart = moment(dateRange.start);
+                                const rangeEnd = moment(dateRange.end);
+
+                                if (rangeStart.isSame(currentMonth, 'month')) {
+                                    displayStart = rangeStart;
+                                }
+                                if (rangeEnd.isSame(currentMonth, 'month')) {
+                                    displayEnd = rangeEnd;
+                                }
+                            }
+
+                            if (displayStart.isSame(monthStart, 'day') && displayEnd.isSame(monthEnd, 'day')) {
+                                periodTitle = currentMonth.format('MMMM YYYY');
+                            } else {
+                                periodTitle = `${displayStart.format('MMMM D')}-${displayEnd.format('D YYYY')}`;
+                            }
                         }
                     } else if (view === 'week') {
                         periodTitle = `Week of ${moment(periodKey).startOf('week').format('MMMM D, YYYY')}`;
@@ -268,6 +297,16 @@ const PrintHandler = ({events = [], view = "month", dateRange, close, filterPara
                                 dateRange={dateRange}
                                 filterParams={{...filterParams, periodTitle}}
                             />
+                            {view === 'agenda' && periodEvents.length === 0 && (
+                                <div style={{
+                                    padding: '40px 20px',
+                                    textAlign: 'center',
+                                    color: '#666',
+                                    fontSize: '16px'
+                                }}>
+                                    No events in this period
+                                </div>
+                            )}
                         </div>
                     );
                 })}

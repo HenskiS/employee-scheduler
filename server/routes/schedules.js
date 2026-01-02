@@ -282,6 +282,7 @@ router.post('/send-print-emails', authMiddleware, async (req, res) => {
       technicians,
       displayOptions,
       customHeader,
+      splitByMonth,
       recipients,
       emailSubject,
       emailMessage
@@ -390,7 +391,8 @@ router.post('/send-print-emails', authMiddleware, async (req, res) => {
       doctors,
       technicians,
       displayOptions,
-      customHeader
+      customHeader,
+      splitByMonth
     };
 
     // Generate PDF once (reuse for all recipients)

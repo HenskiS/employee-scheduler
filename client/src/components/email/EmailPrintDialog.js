@@ -95,6 +95,7 @@ const EmailPrintDialog = ({ open, onClose, onSend, filterParams }) => {
       technicians: filterParams.technicians,
       displayOptions: filterParams.displayOptions,
       customHeader: filterParams.customHeader,
+      splitByMonth: false,  // Disable month splitting for emails
       recipients: selectedRecipients,
       emailSubject,
       emailMessage

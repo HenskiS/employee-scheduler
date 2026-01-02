@@ -118,6 +118,10 @@ const generatePrintPreviewPDF = async (params, options = {}) => {
     queryParams.append('tags', params.tags.join(','));
   }
 
+  // Add splitByMonth parameter (default to true for backward compatibility)
+  const splitByMonth = params.splitByMonth !== undefined ? params.splitByMonth : true;
+  queryParams.append('splitByMonth', splitByMonth);
+
   // Handle display options (compact format)
   if (params.displayOptions) {
     const opts = params.displayOptions;
