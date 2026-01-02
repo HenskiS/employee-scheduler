@@ -280,6 +280,7 @@ router.post('/send-print-emails', authMiddleware, async (req, res) => {
       labels,
       doctors,
       technicians,
+      tags,
       displayOptions,
       customHeader,
       splitByMonth,
@@ -390,6 +391,7 @@ router.post('/send-print-emails', authMiddleware, async (req, res) => {
       labels,
       doctors,
       technicians,
+      tags,
       displayOptions,
       customHeader,
       splitByMonth
