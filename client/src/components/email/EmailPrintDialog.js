@@ -85,6 +85,11 @@ const EmailPrintDialog = ({ open, onClose, onSend, filterParams }) => {
     // Set sending state
     setSending(true);
 
+    // Convert tags to array of IDs (if tags are objects)
+    const tagIds = filterParams.tags?.length > 0
+      ? filterParams.tags.map(tag => tag.id || tag)
+      : [];
+
     // Prepare email parameters
     const emailParams = {
       startDate: filterParams.startDate,
@@ -93,7 +98,7 @@ const EmailPrintDialog = ({ open, onClose, onSend, filterParams }) => {
       labels: filterParams.labels,
       doctors: filterParams.doctors,
       technicians: filterParams.technicians,
-      tags: filterParams.tags,
+      tags: tagIds,
       displayOptions: filterParams.displayOptions,
       customHeader: filterParams.customHeader,
       splitByMonth: false,  // Disable month splitting for emails

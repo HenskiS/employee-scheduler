@@ -507,8 +507,8 @@ router.get('/events-print', async (req, res) => {
   }
 
   try {
-    const { start, end, labels, doctors, technicians } = req.query;
-    console.log('events-print endpoint called with params:', { start, end, labels, doctors, technicians });
+    const { start, end, labels, doctors, technicians, tags } = req.query;
+    console.log('events-print endpoint called with params:', { start, end, labels, doctors, technicians, tags });
 
     if (!start || !end) {
       return res.status(400).json({ error: 'Start and end dates are required' });
@@ -531,6 +531,14 @@ router.get('/events-print', async (req, res) => {
       filters.technicians = Array.isArray(technicians)
         ? technicians.map(Number)
         : technicians.split(',').map(Number);
+    }
+
+    if (tags) {
+      const tagArray = Array.isArray(tags)
+        ? tags.map(Number)
+        : tags.split(',').map(Number);
+      // Filter out NaN values
+      filters.tags = tagArray.filter(id => !isNaN(id) && id !== null && id !== undefined);
     }
 
     console.log('Parsed filters:', filters);

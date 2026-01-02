@@ -90,6 +90,11 @@ export default function SchedulePdfView() {
       params.append('technicians', technicians);
     }
 
+    const tags = searchParams.get('tags');
+    if (tags) {
+      params.append('tags', tags);
+    }
+
     // Use the localhost-only /schedules/events-print route (no auth required)
     const url = `/api/schedules/events-print?${params.toString()}`;
     console.log('ServerPrint: Fetching from:', url);
